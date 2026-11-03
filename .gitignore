@@ -1,0 +1,19 @@
+# Python and uv
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+
+# Local settings and secrets. Copy example.env to .env instead.
+.env
+.env.*
+*.pem
+*.key
+
+# Tool caches
+.ruff_cache/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
