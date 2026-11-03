@@ -1,0 +1,7 @@
+# Only what the Dockerfile copies is needed; keep the rest, and secrets above
+# all, out of the build context.
+.git/
+.venv/
+.env
+**/__pycache__/
+.ruff_cache/
