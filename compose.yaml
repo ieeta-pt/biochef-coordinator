@@ -1,0 +1,36 @@
+# Postgres and the coordinator, for development. Copy example.env to .env first.
+#
+#   docker compose up --build        everything, on http://localhost:8000
+#   docker compose up -d db          only Postgres, to run the service with uv
+
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?copy example.env to .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?copy example.env to .env}
+      POSTGRES_DB: ${POSTGRES_DB:?copy example.env to .env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      # Postgres 18 images keep their data under /var/lib/postgresql.
+      - coordinator-db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  coordinator:
+    build: .
+    environment:
+      COORDINATOR_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  coordinator-db:
+    name: coordinator-db
