@@ -1,6 +1,55 @@
 {
   "components": {
     "schemas": {
+      "AddWorkflow": {
+        "description": "POST /studies/{id}/workflows (7).",
+        "properties": {
+          "study_version": {
+            "title": "Study Version",
+            "type": "integer"
+          },
+          "workflow": {
+            "$ref": "#/components/schemas/Workflow"
+          },
+          "workflowhub_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflowhub Id"
+          }
+        },
+        "required": [
+          "study_version",
+          "workflow"
+        ],
+        "title": "AddWorkflow",
+        "type": "object"
+      },
+      "EncryptedPayload": {
+        "properties": {
+          "ciphertext": {
+            "description": "Base64. Only the node can decrypt it.",
+            "title": "Ciphertext",
+            "type": "string"
+          },
+          "enc": {
+            "const": "age-x25519",
+            "title": "Enc",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enc",
+          "ciphertext"
+        ],
+        "title": "EncryptedPayload",
+        "type": "object"
+      },
       "Health": {
         "properties": {
           "database": {
@@ -20,6 +69,977 @@
         ],
         "title": "Health",
         "type": "object"
+      },
+      "JobRequest": {
+        "description": "What the member signs, once per node",
+        "properties": {
+          "datasets": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Datasets",
+            "type": "array"
+          },
+          "member": {
+            "title": "Member",
+            "type": "string"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "not_after": {
+            "format": "date-time",
+            "title": "Not After",
+            "type": "string"
+          },
+          "payload_digest": {
+            "title": "Payload Digest",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "study_digest": {
+            "title": "Study Digest",
+            "type": "string"
+          },
+          "study_id": {
+            "title": "Study Id",
+            "type": "string"
+          },
+          "study_version": {
+            "title": "Study Version",
+            "type": "integer"
+          },
+          "workflow_digest": {
+            "title": "Workflow Digest",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "study_id",
+          "study_version",
+          "study_digest",
+          "workflow_digest",
+          "member",
+          "node",
+          "datasets",
+          "not_after",
+          "payload_digest"
+        ],
+        "title": "JobRequest",
+        "type": "object"
+      },
+      "JobState": {
+        "description": "GET /jobs/{id}, and each server-sent event ",
+        "properties": {
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "running",
+              "complete",
+              "incomplete",
+              "canceled"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "study_id": {
+            "title": "Study Id",
+            "type": "string"
+          },
+          "study_version": {
+            "title": "Study Version",
+            "type": "integer"
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          },
+          "submitted_by": {
+            "title": "Submitted By",
+            "type": "string"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskState"
+            },
+            "title": "Tasks",
+            "type": "array"
+          },
+          "workflow_digest": {
+            "title": "Workflow Digest",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "request_id",
+          "study_id",
+          "study_version",
+          "workflow_digest",
+          "submitted_by",
+          "submitted_at",
+          "state",
+          "tasks"
+        ],
+        "title": "JobState",
+        "type": "object"
+      },
+      "JobSubmission": {
+        "description": "POST /studies/{id}/jobs: one signed request and payload per node",
+        "properties": {
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/SignedJobRequest"
+            },
+            "minItems": 1,
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "request_id",
+          "tasks"
+        ],
+        "title": "JobSubmission",
+        "type": "object"
+      },
+      "KeyRegistration": {
+        "description": "PUT /me/keys (7.1).",
+        "properties": {
+          "binding_token": {
+            "description": "LS Login ID token whose nonce is the hash of both keys (8).",
+            "title": "Binding Token",
+            "type": "string"
+          },
+          "result_key": {
+            "description": "The age public key that partials are encrypted for.",
+            "title": "Result Key",
+            "type": "string"
+          },
+          "signing_key": {
+            "$ref": "#/components/schemas/SigningKey"
+          }
+        },
+        "required": [
+          "signing_key",
+          "result_key",
+          "binding_token"
+        ],
+        "title": "KeyRegistration",
+        "type": "object"
+      },
+      "LibraryWorkflow": {
+        "description": "A pre-configured workflow, linked to WorkflowHub (7).",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "digest": {
+            "title": "Digest",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          },
+          "workflow": {
+            "$ref": "#/components/schemas/Workflow"
+          },
+          "workflowhub_id": {
+            "title": "Workflowhub Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "version",
+          "description",
+          "workflowhub_id",
+          "digest",
+          "workflow"
+        ],
+        "title": "LibraryWorkflow",
+        "type": "object"
+      },
+      "Member": {
+        "description": "A researcher as listed in a study version (7.1).",
+        "properties": {
+          "binding_token": {
+            "title": "Binding Token",
+            "type": "string"
+          },
+          "ls_aai_id": {
+            "title": "Ls Aai Id",
+            "type": "string"
+          },
+          "member": {
+            "title": "Member",
+            "type": "string"
+          },
+          "result_key": {
+            "title": "Result Key",
+            "type": "string"
+          },
+          "signing_key": {
+            "$ref": "#/components/schemas/SigningKey"
+          }
+        },
+        "required": [
+          "member",
+          "ls_aai_id",
+          "signing_key",
+          "result_key",
+          "binding_token"
+        ],
+        "title": "Member",
+        "type": "object"
+      },
+      "NodeApproval": {
+        "description": "One node's decision on a study version or a workflow (3.2).",
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "decision": {
+            "enum": [
+              "pending",
+              "approved",
+              "refused",
+              "withdrawn"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node",
+          "decision"
+        ],
+        "title": "NodeApproval",
+        "type": "object"
+      },
+      "OutputRules": {
+        "properties": {
+          "aggregates_only": {
+            "title": "Aggregates Only",
+            "type": "boolean"
+          },
+          "max_bytes": {
+            "title": "Max Bytes",
+            "type": "integer"
+          },
+          "min_count": {
+            "title": "Min Count",
+            "type": "integer"
+          },
+          "types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Types",
+            "type": "array"
+          }
+        },
+        "required": [
+          "aggregates_only",
+          "min_count",
+          "types",
+          "max_bytes"
+        ],
+        "title": "OutputRules",
+        "type": "object"
+      },
+      "Partial": {
+        "description": "One node's result for a job, encrypted for the submitter",
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "ciphertext": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Base64. None when withheld.",
+            "title": "Ciphertext"
+          },
+          "decision": {
+            "enum": [
+              "released",
+              "withheld"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "signature": {
+            "description": "The node's signature over the statement.",
+            "title": "Signature",
+            "type": "string"
+          },
+          "statement": {
+            "$ref": "#/components/schemas/Statement"
+          }
+        },
+        "required": [
+          "node",
+          "attempt",
+          "decision",
+          "statement",
+          "signature"
+        ],
+        "title": "Partial",
+        "type": "object"
+      },
+      "PartialPredicate": {
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "ciphertext_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ciphertext Size"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "recipient_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fingerprint of the submitter's key.",
+            "title": "Recipient Key"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "study_digest": {
+            "title": "Study Digest",
+            "type": "string"
+          },
+          "study_id": {
+            "title": "Study Id",
+            "type": "string"
+          },
+          "study_version": {
+            "title": "Study Version",
+            "type": "integer"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "workflow_digest": {
+            "title": "Workflow Digest",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "task_id",
+          "attempt",
+          "study_id",
+          "study_version",
+          "study_digest",
+          "workflow_digest",
+          "node"
+        ],
+        "title": "PartialPredicate",
+        "type": "object"
+      },
+      "Problem": {
+        "additionalProperties": true,
+        "description": "An error, as RFC 9457 problem details. Invalid requests add an errors list.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "status": {
+            "title": "Status",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "default": "about:blank",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "status"
+        ],
+        "title": "Problem",
+        "type": "object"
+      },
+      "Signature": {
+        "properties": {
+          "alg": {
+            "const": "ES256",
+            "title": "Alg",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "sig": {
+            "title": "Sig",
+            "type": "string"
+          }
+        },
+        "required": [
+          "alg",
+          "key",
+          "sig"
+        ],
+        "title": "Signature",
+        "type": "object"
+      },
+      "SignedJobRequest": {
+        "properties": {
+          "job_request": {
+            "$ref": "#/components/schemas/JobRequest"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/EncryptedPayload"
+          },
+          "signature": {
+            "$ref": "#/components/schemas/Signature"
+          }
+        },
+        "required": [
+          "job_request",
+          "signature",
+          "payload"
+        ],
+        "title": "SignedJobRequest",
+        "type": "object"
+      },
+      "SigningKey": {
+        "description": "A member's public signing key, as a P-256 JWK.",
+        "properties": {
+          "crv": {
+            "const": "P-256",
+            "title": "Crv",
+            "type": "string"
+          },
+          "kty": {
+            "const": "EC",
+            "title": "Kty",
+            "type": "string"
+          },
+          "x": {
+            "title": "X",
+            "type": "string"
+          },
+          "y": {
+            "title": "Y",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kty",
+          "crv",
+          "x",
+          "y"
+        ],
+        "title": "SigningKey",
+        "type": "object"
+      },
+      "SiteStatus": {
+        "description": "A node's status, derived from its polls (6.1).",
+        "properties": {
+          "last_poll_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Poll At"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "queue_length": {
+            "title": "Queue Length",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "online",
+              "degraded",
+              "offline"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node",
+          "status",
+          "last_poll_at",
+          "queue_length"
+        ],
+        "title": "SiteStatus",
+        "type": "object"
+      },
+      "Statement": {
+        "description": "A node's outer statement on a partial, as an in-toto Statement",
+        "properties": {
+          "_type": {
+            "default": "https://in-toto.io/Statement/v1",
+            "title": "Type",
+            "type": "string"
+          },
+          "predicate": {
+            "$ref": "#/components/schemas/PartialPredicate"
+          },
+          "predicateType": {
+            "default": "https://biochef.app/partial/v1",
+            "title": "Predicatetype",
+            "type": "string"
+          },
+          "subject": {
+            "description": "Empty when the result was withheld.",
+            "items": {
+              "$ref": "#/components/schemas/StatementSubject"
+            },
+            "title": "Subject",
+            "type": "array"
+          }
+        },
+        "required": [
+          "predicate"
+        ],
+        "title": "Statement",
+        "type": "object"
+      },
+      "StatementSubject": {
+        "properties": {
+          "digest": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Digest",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "digest"
+        ],
+        "title": "StatementSubject",
+        "type": "object"
+      },
+      "Study": {
+        "description": "GET /studies/{id}: the versions and each node's approval (7).",
+        "properties": {
+          "study_id": {
+            "title": "Study Id",
+            "type": "string"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/StudyVersionStatus"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "study_id",
+          "versions"
+        ],
+        "title": "Study",
+        "type": "object"
+      },
+      "StudyNode": {
+        "properties": {
+          "datasets": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Datasets",
+            "type": "array"
+          },
+          "encryption_key": {
+            "description": "Fingerprint of the node's encryption key.",
+            "title": "Encryption Key",
+            "type": "string"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node",
+          "encryption_key",
+          "datasets"
+        ],
+        "title": "StudyNode",
+        "type": "object"
+      },
+      "StudyVersion": {
+        "description": "One version of a study, signed by its proposer (7.1). Each node approves its digest.",
+        "properties": {
+          "goal": {
+            "title": "Goal",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/Member"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/StudyNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "output_rules": {
+            "$ref": "#/components/schemas/OutputRules"
+          },
+          "previous_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Digest"
+          },
+          "proposer": {
+            "title": "Proposer",
+            "type": "string"
+          },
+          "signature": {
+            "title": "Signature",
+            "type": "string"
+          },
+          "study_id": {
+            "title": "Study Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "study_id",
+          "version",
+          "goal",
+          "members",
+          "nodes",
+          "output_rules",
+          "proposer",
+          "signature"
+        ],
+        "title": "StudyVersion",
+        "type": "object"
+      },
+      "StudyVersionStatus": {
+        "properties": {
+          "approvals": {
+            "items": {
+              "$ref": "#/components/schemas/NodeApproval"
+            },
+            "title": "Approvals",
+            "type": "array"
+          },
+          "digest": {
+            "title": "Digest",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "digest",
+          "approvals"
+        ],
+        "title": "StudyVersionStatus",
+        "type": "object"
+      },
+      "TaskState": {
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "leased",
+              "refused",
+              "running",
+              "barrier_1",
+              "partial_delivered",
+              "withheld",
+              "failed",
+              "canceled"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node",
+          "state",
+          "attempt"
+        ],
+        "title": "TaskState",
+        "type": "object"
+      },
+      "ToolData": {
+        "properties": {
+          "paramValues": {
+            "additionalProperties": true,
+            "title": "Paramvalues",
+            "type": "object"
+          },
+          "repo": {
+            "description": "The tool, pinned by digest.",
+            "title": "Repo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "repo",
+          "paramValues"
+        ],
+        "title": "ToolData",
+        "type": "object"
+      },
+      "Workflow": {
+        "description": "A BioChef workflow in canonical form (3.4). Its digest identifies it.",
+        "properties": {
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowEdge"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "nodes",
+          "edges"
+        ],
+        "title": "Workflow",
+        "type": "object"
+      },
+      "WorkflowEdge": {
+        "properties": {
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "sourceHandle": {
+            "title": "Sourcehandle",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          },
+          "targetHandle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targethandle"
+          }
+        },
+        "required": [
+          "source",
+          "sourceHandle",
+          "target"
+        ],
+        "title": "WorkflowEdge",
+        "type": "object"
+      },
+      "WorkflowNode": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolData"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only on tool nodes (workflowNode)."
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "workflowNode",
+              "inputWorkflowNode",
+              "outputWorkflowNode"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type"
+        ],
+        "title": "WorkflowNode",
+        "type": "object"
+      },
+      "WorkflowStatus": {
+        "description": "A workflow of a study and each node's approval (7).",
+        "properties": {
+          "approvals": {
+            "items": {
+              "$ref": "#/components/schemas/NodeApproval"
+            },
+            "title": "Approvals",
+            "type": "array"
+          },
+          "digest": {
+            "title": "Digest",
+            "type": "string"
+          },
+          "study_version": {
+            "title": "Study Version",
+            "type": "integer"
+          },
+          "withdrawn": {
+            "title": "Withdrawn",
+            "type": "boolean"
+          },
+          "workflowhub_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflowhub Id"
+          }
+        },
+        "required": [
+          "digest",
+          "study_version",
+          "workflowhub_id",
+          "withdrawn",
+          "approvals"
+        ],
+        "title": "WorkflowStatus",
+        "type": "object"
       }
     }
   },
@@ -30,6 +1050,645 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/jobs/{job_id}": {
+      "get": {
+        "operationId": "get_job_api_v1_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "The job's state and each task's state",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}/cancel": {
+      "post": {
+        "operationId": "cancel_job_api_v1_jobs__job_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Cancel the job; running tasks stop on their next poll",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}/events": {
+      "get": {
+        "operationId": "job_events_api_v1_jobs__job_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "itemSchema": {
+                  "properties": {
+                    "data": {
+                      "contentMediaType": "application/json",
+                      "contentSchema": {
+                        "$ref": "#/components/schemas/JobState"
+                      },
+                      "type": "string"
+                    },
+                    "event": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "retry": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Live progress of the job, as server-sent events",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}/partials": {
+      "get": {
+        "operationId": "list_partials_api_v1_jobs__job_id__partials_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Partial"
+                  },
+                  "title": "Response List Partials Api V1 Jobs  Job Id  Partials Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "The encrypted partials, for the submitter only",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/library/workflows": {
+      "get": {
+        "operationId": "list_library_workflows_api_v1_library_workflows_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LibraryWorkflow"
+                  },
+                  "title": "Response List Library Workflows Api V1 Library Workflows Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Pre-configured workflows, linked to WorkflowHub",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/me/keys": {
+      "put": {
+        "operationId": "register_keys_api_v1_me_keys_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyRegistration"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Member"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Register the caller's signing key and result key",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/sites": {
+      "get": {
+        "operationId": "list_sites_api_v1_sites_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SiteStatus"
+                  },
+                  "title": "Response List Sites Api V1 Sites Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Each node's status",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/studies": {
+      "post": {
+        "operationId": "propose_study_api_v1_studies_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudyVersion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudyVersionStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Propose a study",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/studies/{study_id}": {
+      "get": {
+        "operationId": "get_study_api_v1_studies__study_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "study_id",
+            "required": true,
+            "schema": {
+              "title": "Study Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Study"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "A study's versions and each node's approval",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/studies/{study_id}/jobs": {
+      "post": {
+        "operationId": "submit_job_api_v1_studies__study_id__jobs_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "study_id",
+            "required": true,
+            "schema": {
+              "title": "Study Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobSubmission"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Submit a job",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/studies/{study_id}/versions": {
+      "post": {
+        "operationId": "propose_study_version_api_v1_studies__study_id__versions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "study_id",
+            "required": true,
+            "schema": {
+              "title": "Study Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudyVersion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudyVersionStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Propose a new version of a study; the nodes approve it again",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/studies/{study_id}/workflows": {
+      "get": {
+        "operationId": "list_workflows_api_v1_studies__study_id__workflows_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "study_id",
+            "required": true,
+            "schema": {
+              "title": "Study Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WorkflowStatus"
+                  },
+                  "title": "Response List Workflows Api V1 Studies  Study Id  Workflows Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "A study's workflows and their approvals",
+        "tags": [
+          "researcher"
+        ]
+      },
+      "post": {
+        "operationId": "add_workflow_api_v1_studies__study_id__workflows_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "study_id",
+            "required": true,
+            "schema": {
+              "title": "Study Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddWorkflow"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Add a workflow to an approved study version",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/studies/{study_id}/workflows/{digest}/withdraw": {
+      "post": {
+        "operationId": "withdraw_workflow_api_v1_studies__study_id__workflows__digest__withdraw_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "study_id",
+            "required": true,
+            "schema": {
+              "title": "Study Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "digest",
+            "required": true,
+            "schema": {
+              "title": "Digest",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Withdraw a workflow from new jobs",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
     "/healthz": {
       "get": {
         "operationId": "healthz_healthz_get",
