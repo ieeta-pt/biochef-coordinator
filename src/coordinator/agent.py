@@ -18,10 +18,12 @@ from coordinator.models import (
     PollResponse,
     SiteList,
     StudyVersion,
+    TaskDecision,
     TaskEnvelope,
+    TaskEvent,
     Workflow,
 )
-from coordinator.problems import INVALID_REQUEST
+from coordinator.problems import INVALID_REQUEST, Problem
 from coordinator.researcher import WORKFLOW
 
 router = APIRouter(prefix="/api/agent/v1", tags=["agent"], responses=INVALID_REQUEST)
@@ -59,6 +61,16 @@ SITE_LIST = b"""{
 }
 """
 SITE_LIST_SIGNATURE = "7vE1qDk3..."
+
+# For every call under /tasks/{task_id}/attempts/{attempt}. The same answer for
+# all three cases, so a node cannot learn whether another node's task exists.
+TASK_NOT_FOUND = {
+    404: {
+        "model": Problem,
+        "description": "Not a task of the calling node, not its current attempt, or its lease "
+        "is no longer valid.",
+    }
+}
 
 
 def study_version(study_id: str, version: int) -> StudyVersion:
@@ -210,3 +222,24 @@ async def post_approval(approval: Approval) -> None:
     """The Hub knows a decision by the calling node and its decision_id. The agent sends
     a decision again when it cannot tell whether it arrived: one the Hub already holds
     gets the same answer and is not stored twice."""
+
+
+@router.post(
+    "/tasks/{task_id}/attempts/{attempt}/decision",
+    status_code=204,
+    responses=TASK_NOT_FOUND,
+    summary="Accept or refuse a delivered task after the local checks",
+)
+async def post_task_decision(task_id: str, attempt: int, decision: TaskDecision) -> None:
+    """A refusal is final for that request at that node, except no_capacity, which puts
+    the task back in the queue without using an attempt."""
+
+
+@router.post(
+    "/tasks/{task_id}/attempts/{attempt}/events",
+    status_code=204,
+    responses=TASK_NOT_FOUND,
+    summary="Report a state change at once instead of on the next poll",
+)
+async def post_task_event(task_id: str, attempt: int, event: TaskEvent) -> None:
+    """The same state also arrives in the next poll, so a lost event only costs delay."""

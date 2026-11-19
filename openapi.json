@@ -1262,6 +1262,52 @@
         "title": "StudyVersionStatus",
         "type": "object"
       },
+      "TaskDecision": {
+        "description": "The agent's answer to a delivered task, after its local checks",
+        "properties": {
+          "decision": {
+            "enum": [
+              "accept",
+              "refuse"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "bad_signature",
+                  "key_not_in_study",
+                  "wrong_node",
+                  "study_not_approved",
+                  "workflow_not_approved",
+                  "workflow_digest_mismatch",
+                  "request_replayed",
+                  "expired",
+                  "visa_missing",
+                  "visa_expired",
+                  "visa_untrusted_issuer",
+                  "visa_subject_mismatch",
+                  "dataset_unknown",
+                  "no_capacity"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only when refusing.",
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "title": "TaskDecision",
+        "type": "object"
+      },
       "TaskEnvelope": {
         "description": "A task as the Hub delivers it. The Hub adds task_id, attempt and lease_id, unsigned",
         "properties": {
@@ -1296,6 +1342,52 @@
           "payload"
         ],
         "title": "TaskEnvelope",
+        "type": "object"
+      },
+      "TaskEvent": {
+        "description": "A state change, reported at once instead of on the next poll",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only when failed: a code, such as tool_verification_failed.",
+            "title": "Reason"
+          },
+          "seq": {
+            "description": "Increases within each attempt, to drop duplicates and spot gaps.",
+            "title": "Seq",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "barrier_1",
+              "held",
+              "failed",
+              "canceled"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "at",
+          "state"
+        ],
+        "title": "TaskEvent",
         "type": "object"
       },
       "TaskState": {
@@ -1659,6 +1751,136 @@
           }
         },
         "summary": "A study version waiting for this node's approval",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/api/agent/v1/tasks/{task_id}/attempts/{attempt}/decision": {
+      "post": {
+        "description": "A refusal is final for that request at that node, except no_capacity, which puts\nthe task back in the queue without using an attempt.",
+        "operationId": "post_task_decision_api_agent_v1_tasks__task_id__attempts__attempt__decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attempt",
+            "required": true,
+            "schema": {
+              "title": "Attempt",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskDecision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not a task of the calling node, not its current attempt, or its lease is no longer valid."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Accept or refuse a delivered task after the local checks",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/api/agent/v1/tasks/{task_id}/attempts/{attempt}/events": {
+      "post": {
+        "description": "The same state also arrives in the next poll, so a lost event only costs delay.",
+        "operationId": "post_task_event_api_agent_v1_tasks__task_id__attempts__attempt__events_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attempt",
+            "required": true,
+            "schema": {
+              "title": "Attempt",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskEvent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not a task of the calling node, not its current attempt, or its lease is no longer valid."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Report a state change at once instead of on the next poll",
         "tags": [
           "agent"
         ]

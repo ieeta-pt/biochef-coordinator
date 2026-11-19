@@ -316,13 +316,17 @@ class Capacity(BaseModel):
     accepting: bool
 
 
+AgentTaskState = Literal["queued", "running", "barrier_1", "held", "failed", "canceled"]
+"""A task's state as the agent reports it."""
+
+
 class ActiveTask(BaseModel):
     """A task the agent holds. Listing its lease renews it"""
 
     task_id: str
     attempt: int
     lease_id: str
-    state: Literal["queued", "running", "barrier_1", "held", "failed", "canceled"]
+    state: AgentTaskState
 
 
 class PollRequest(BaseModel):
@@ -394,3 +398,42 @@ class Approval(BaseModel):
     decision: Literal["approved", "refused", "withdrawn"]
     at: datetime
     signature: str
+
+
+# Tasks
+
+RefusalReason = Literal[
+    "bad_signature",
+    "key_not_in_study",
+    "wrong_node",
+    "study_not_approved",
+    "workflow_not_approved",
+    "workflow_digest_mismatch",
+    "request_replayed",
+    "expired",
+    "visa_missing",
+    "visa_expired",
+    "visa_untrusted_issuer",
+    "visa_subject_mismatch",
+    "dataset_unknown",
+    "no_capacity",
+]
+"""Why an agent refuses a task. A code only, so nothing about the data leaves the node."""
+
+
+class TaskDecision(BaseModel):
+    """The agent's answer to a delivered task, after its local checks"""
+
+    decision: Literal["accept", "refuse"]
+    reason: RefusalReason | None = Field(None, description="Only when refusing.")
+
+
+class TaskEvent(BaseModel):
+    """A state change, reported at once instead of on the next poll"""
+
+    seq: int = Field(description="Increases within each attempt, to drop duplicates and spot gaps.")
+    at: datetime
+    state: AgentTaskState
+    reason: str | None = Field(
+        None, description="Only when failed: a code, such as tool_verification_failed."
+    )
