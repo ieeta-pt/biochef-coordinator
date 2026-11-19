@@ -16,9 +16,12 @@ from coordinator.models import (
     PollRequest,
     PollResponse,
     SiteList,
+    StudyVersion,
     TaskEnvelope,
+    Workflow,
 )
 from coordinator.problems import INVALID_REQUEST
+from coordinator.researcher import WORKFLOW
 
 router = APIRouter(prefix="/api/agent/v1", tags=["agent"], responses=INVALID_REQUEST)
 
@@ -55,6 +58,55 @@ SITE_LIST = b"""{
 }
 """
 SITE_LIST_SIGNATURE = "7vE1qDk3..."
+
+
+def study_version(study_id: str, version: int) -> StudyVersion:
+    def member(member: str, ls_aai_id: str) -> dict:
+        return {
+            "member": member,
+            "ls_aai_id": ls_aai_id,
+            "signing_key": {"kty": "EC", "crv": "P-256", "x": "f83O...", "y": "x_FE..."},
+            "result_key": "age1qyqszqgpqyqszqgp...",
+            "binding_token": "eyJhbGciOiJSUzI1NiIs...",
+        }
+
+    return StudyVersion.model_validate(
+        {
+            "study_id": study_id,
+            "version": version,
+            "previous_digest": "sha256:1c7e..." if version > 1 else None,
+            "goal": "Allele frequencies of variant X in three cohorts",
+            "members": [
+                member("m-01", "a1b2c3...@lifescience-ri.eu"),
+                member("m-02", "d4e5f6...@lifescience-ri.eu"),
+            ],
+            "nodes": [
+                {
+                    "node": "biodata-pt",
+                    "encryption_key": "sha256:3f9a...",
+                    "datasets": ["EGAD00001001234"],
+                },
+                {
+                    "node": "ifb-fr",
+                    "encryption_key": "sha256:77c0...",
+                    "datasets": ["EGAD00001005678"],
+                },
+                {
+                    "node": "nottingham",
+                    "encryption_key": "sha256:b812...",
+                    "datasets": ["EGAD00001009012"],
+                },
+            ],
+            "output_rules": {
+                "aggregates_only": True,
+                "min_count": 10,
+                "types": ["TEXT", "TSV"],
+                "max_bytes": 1048576,
+            },
+            "proposer": "m-01",
+            "signature": "MEQC...",
+        }
+    )
 
 
 def task_for(node: str, now: datetime) -> TaskEnvelope:
@@ -128,3 +180,21 @@ async def poll(body: PollRequest, node: CurrentNode) -> PollResponse:
         ],
         control=[ControlMessage(type="cancel", task_id="tk_6ff0...", attempt=1)],
     )
+
+
+@router.get(
+    "/studies/{study_id}/versions/{version}",
+    summary="A study version waiting for this node's approval",
+)
+async def get_study_version(study_id: str, version: int) -> StudyVersion:
+    return study_version(study_id, version)
+
+
+@router.get(
+    "/workflows/{digest}",
+    summary="A workflow waiting for this node's approval",
+    # Input nodes carry no data in the canonical form (spec 3.4): leave it out, not null.
+    response_model_exclude_none=True,
+)
+async def get_workflow(digest: str) -> Workflow:
+    return WORKFLOW
