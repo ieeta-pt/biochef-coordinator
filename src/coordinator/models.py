@@ -295,3 +295,84 @@ class SiteList(BaseModel):
     version: int = Field(description="Increases with every new list.")
     expires_at: datetime = Field(description="ISO 8601, with its zone.")
     nodes: list[SiteListNode]
+
+
+# Polling
+
+
+class AgentInfo(BaseModel):
+    """What the agent reports about itself in every poll"""
+
+    version: str
+    profile: str = Field(description='For example "tre".')
+    runner: str = Field(description='For example "apptainer".')
+    signing_mode: str = Field(description='For example "strict".')
+    state: Literal["alive", "running", "waiting", "error"]
+
+
+class Capacity(BaseModel):
+    slots_total: int
+    slots_free: int
+    accepting: bool
+
+
+class ActiveTask(BaseModel):
+    """A task the agent holds. Listing its lease renews it"""
+
+    task_id: str
+    attempt: int
+    lease_id: str
+    state: Literal["queued", "running", "barrier_1", "held", "failed", "canceled"]
+
+
+class PollRequest(BaseModel):
+    """POST /poll: the agent's heartbeat"""
+
+    api_version: str
+    agent: AgentInfo
+    site_list_version: int
+    capacity: Capacity
+    active: list[ActiveTask] = Field(default_factory=list)
+
+
+class Lease(BaseModel):
+    lease_id: str
+    expires_at: datetime
+    valid: bool = Field(description="False when the Hub re-queued or canceled the attempt.")
+
+
+class TaskEnvelope(BaseModel):
+    """A task as the Hub delivers it. The Hub adds task_id, attempt and lease_id, unsigned"""
+
+    task_id: str
+    attempt: int
+    lease_id: str
+    job_request: JobRequest
+    signature: Signature
+    payload: EncryptedPayload
+
+
+class PendingApproval(BaseModel):
+    """A study version or a workflow waiting for this node's data manager"""
+
+    kind: Literal["study", "workflow"]
+    study_id: str
+    version: int = Field(description="The study version.")
+    digest: Digest = Field(description="The study version's digest, or the workflow's.")
+
+
+class ControlMessage(BaseModel):
+    """An instruction for the agent: stop this attempt of a task"""
+
+    type: Literal["cancel"]
+    task_id: str
+    attempt: int
+
+
+class PollResponse(BaseModel):
+    server_time: datetime
+    next_poll_after_s: int
+    leases: list[Lease]
+    tasks: list[TaskEnvelope]
+    pending_approvals: list[PendingApproval]
+    control: list[ControlMessage]

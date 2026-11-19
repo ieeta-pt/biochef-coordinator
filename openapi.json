@@ -1,6 +1,43 @@
 {
   "components": {
     "schemas": {
+      "ActiveTask": {
+        "description": "A task the agent holds. Listing its lease renews it",
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "lease_id": {
+            "title": "Lease Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "barrier_1",
+              "held",
+              "failed",
+              "canceled"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "attempt",
+          "lease_id",
+          "state"
+        ],
+        "title": "ActiveTask",
+        "type": "object"
+      },
       "AddWorkflow": {
         "description": "POST /studies/{id}/workflows (7).",
         "properties": {
@@ -28,6 +65,97 @@
           "workflow"
         ],
         "title": "AddWorkflow",
+        "type": "object"
+      },
+      "AgentInfo": {
+        "description": "What the agent reports about itself in every poll",
+        "properties": {
+          "profile": {
+            "description": "For example \"tre\".",
+            "title": "Profile",
+            "type": "string"
+          },
+          "runner": {
+            "description": "For example \"apptainer\".",
+            "title": "Runner",
+            "type": "string"
+          },
+          "signing_mode": {
+            "description": "For example \"strict\".",
+            "title": "Signing Mode",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "alive",
+              "running",
+              "waiting",
+              "error"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "profile",
+          "runner",
+          "signing_mode",
+          "state"
+        ],
+        "title": "AgentInfo",
+        "type": "object"
+      },
+      "Capacity": {
+        "properties": {
+          "accepting": {
+            "title": "Accepting",
+            "type": "boolean"
+          },
+          "slots_free": {
+            "title": "Slots Free",
+            "type": "integer"
+          },
+          "slots_total": {
+            "title": "Slots Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "slots_total",
+          "slots_free",
+          "accepting"
+        ],
+        "title": "Capacity",
+        "type": "object"
+      },
+      "ControlMessage": {
+        "description": "An instruction for the agent: stop this attempt of a task",
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "cancel",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "task_id",
+          "attempt"
+        ],
+        "title": "ControlMessage",
         "type": "object"
       },
       "EncryptedPayload": {
@@ -243,6 +371,31 @@
           "binding_token"
         ],
         "title": "KeyRegistration",
+        "type": "object"
+      },
+      "Lease": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "lease_id": {
+            "title": "Lease Id",
+            "type": "string"
+          },
+          "valid": {
+            "description": "False when the Hub re-queued or canceled the attempt.",
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lease_id",
+          "expires_at",
+          "valid"
+        ],
+        "title": "Lease",
         "type": "object"
       },
       "LibraryWorkflow": {
@@ -503,6 +656,126 @@
           "node"
         ],
         "title": "PartialPredicate",
+        "type": "object"
+      },
+      "PendingApproval": {
+        "description": "A study version or a workflow waiting for this node's data manager",
+        "properties": {
+          "digest": {
+            "description": "The study version's digest, or the workflow's.",
+            "title": "Digest",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "study",
+              "workflow"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "study_id": {
+            "title": "Study Id",
+            "type": "string"
+          },
+          "version": {
+            "description": "The study version.",
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "study_id",
+          "version",
+          "digest"
+        ],
+        "title": "PendingApproval",
+        "type": "object"
+      },
+      "PollRequest": {
+        "description": "POST /poll: the agent's heartbeat",
+        "properties": {
+          "active": {
+            "items": {
+              "$ref": "#/components/schemas/ActiveTask"
+            },
+            "title": "Active",
+            "type": "array"
+          },
+          "agent": {
+            "$ref": "#/components/schemas/AgentInfo"
+          },
+          "api_version": {
+            "title": "Api Version",
+            "type": "string"
+          },
+          "capacity": {
+            "$ref": "#/components/schemas/Capacity"
+          },
+          "site_list_version": {
+            "title": "Site List Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "api_version",
+          "agent",
+          "site_list_version",
+          "capacity"
+        ],
+        "title": "PollRequest",
+        "type": "object"
+      },
+      "PollResponse": {
+        "properties": {
+          "control": {
+            "items": {
+              "$ref": "#/components/schemas/ControlMessage"
+            },
+            "title": "Control",
+            "type": "array"
+          },
+          "leases": {
+            "items": {
+              "$ref": "#/components/schemas/Lease"
+            },
+            "title": "Leases",
+            "type": "array"
+          },
+          "next_poll_after_s": {
+            "title": "Next Poll After S",
+            "type": "integer"
+          },
+          "pending_approvals": {
+            "items": {
+              "$ref": "#/components/schemas/PendingApproval"
+            },
+            "title": "Pending Approvals",
+            "type": "array"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskEnvelope"
+            },
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "server_time",
+          "next_poll_after_s",
+          "leases",
+          "tasks",
+          "pending_approvals",
+          "control"
+        ],
+        "title": "PollResponse",
         "type": "object"
       },
       "Problem": {
@@ -912,6 +1185,42 @@
         "title": "StudyVersionStatus",
         "type": "object"
       },
+      "TaskEnvelope": {
+        "description": "A task as the Hub delivers it. The Hub adds task_id, attempt and lease_id, unsigned",
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "job_request": {
+            "$ref": "#/components/schemas/JobRequest"
+          },
+          "lease_id": {
+            "title": "Lease Id",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/EncryptedPayload"
+          },
+          "signature": {
+            "$ref": "#/components/schemas/Signature"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "attempt",
+          "lease_id",
+          "job_request",
+          "signature",
+          "payload"
+        ],
+        "title": "TaskEnvelope",
+        "type": "object"
+      },
       "TaskState": {
         "properties": {
           "attempt": {
@@ -1112,6 +1421,47 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/agent/v1/poll": {
+      "post": {
+        "operationId": "poll_api_agent_v1_poll_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PollRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PollResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Heartbeat: states and capacity go up; tasks, approvals and control messages come down",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/api/agent/v1/site-list": {
       "get": {
         "operationId": "get_site_list_api_agent_v1_site_list_get",
