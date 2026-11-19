@@ -278,3 +278,20 @@ class SiteStatus(BaseModel):
     status: Literal["online", "degraded", "offline"]
     last_poll_at: datetime | None
     queue_length: int
+
+
+class SiteListNode(BaseModel):
+    """One node on the site list, with its keys"""
+
+    node: str
+    encryption_key: str = Field(description="The age public key job payloads are encrypted for.")
+    signing_key: str = Field(description="The public key that checks the node's signatures.")
+    certificate: Digest = Field(description="Fingerprint of the node's client certificate.")
+
+
+class SiteList(BaseModel):
+    """The federation's site list. The Hub serves it byte for byte, as it was signed"""
+
+    version: int = Field(description="Increases with every new list.")
+    expires_at: datetime = Field(description="ISO 8601, with its zone.")
+    nodes: list[SiteListNode]

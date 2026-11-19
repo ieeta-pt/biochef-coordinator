@@ -134,7 +134,7 @@
         "type": "object"
       },
       "JobState": {
-        "description": "GET /jobs/{id}, and each server-sent event ",
+        "description": "GET /jobs/{id}, and each server-sent event",
         "properties": {
           "job_id": {
             "title": "Job Id",
@@ -616,8 +616,70 @@
         "title": "SigningKey",
         "type": "object"
       },
+      "SiteList": {
+        "description": "The federation's site list. The Hub serves it byte for byte, as it was signed",
+        "properties": {
+          "expires_at": {
+            "description": "ISO 8601, with its zone.",
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/SiteListNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "version": {
+            "description": "Increases with every new list.",
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "expires_at",
+          "nodes"
+        ],
+        "title": "SiteList",
+        "type": "object"
+      },
+      "SiteListNode": {
+        "description": "One node on the site list, with its keys",
+        "properties": {
+          "certificate": {
+            "description": "Fingerprint of the node's client certificate.",
+            "title": "Certificate",
+            "type": "string"
+          },
+          "encryption_key": {
+            "description": "The age public key job payloads are encrypted for.",
+            "title": "Encryption Key",
+            "type": "string"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "signing_key": {
+            "description": "The public key that checks the node's signatures.",
+            "title": "Signing Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node",
+          "encryption_key",
+          "signing_key",
+          "certificate"
+        ],
+        "title": "SiteListNode",
+        "type": "object"
+      },
       "SiteStatus": {
-        "description": "A node's status, derived from its polls (6.1).",
+        "description": "A node's status, derived from its polls",
         "properties": {
           "last_poll_at": {
             "anyOf": [
@@ -1050,6 +1112,45 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/agent/v1/site-list": {
+      "get": {
+        "operationId": "get_site_list_api_agent_v1_site_list_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteList"
+                }
+              }
+            },
+            "description": "The site list, byte for byte as the federation signed it.",
+            "headers": {
+              "BioChef-Signature": {
+                "description": "Ed25519 signature over the body, base64url.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "The current signed site list",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/api/v1/jobs/{job_id}": {
       "get": {
         "operationId": "get_job_api_v1_jobs__job_id__get",

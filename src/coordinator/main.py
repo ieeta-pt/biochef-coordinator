@@ -12,7 +12,7 @@ from importlib.metadata import version
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from coordinator import health, problems, researcher
+from coordinator import agent, health, problems, researcher
 from coordinator.config import Settings
 
 
@@ -35,3 +35,4 @@ app = FastAPI(
 problems.install(app)
 app.include_router(health.router)
 app.include_router(researcher.router)
+app.include_router(agent.router)
