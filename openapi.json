@@ -110,6 +110,83 @@
         "title": "AgentInfo",
         "type": "object"
       },
+      "Approval": {
+        "description": "A data manager's decision on a study version or a workflow, signed with the node key",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "approved",
+              "refused",
+              "withdrawn"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "decision_id": {
+            "description": "The node's own id for it, unique only within the node.",
+            "title": "Decision Id",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "study",
+              "workflow"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "signature": {
+            "title": "Signature",
+            "type": "string"
+          },
+          "study_digest": {
+            "title": "Study Digest",
+            "type": "string"
+          },
+          "study_id": {
+            "title": "Study Id",
+            "type": "string"
+          },
+          "study_version": {
+            "title": "Study Version",
+            "type": "integer"
+          },
+          "workflow_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only for a workflow.",
+            "title": "Workflow Digest"
+          }
+        },
+        "required": [
+          "kind",
+          "study_id",
+          "study_version",
+          "study_digest",
+          "node",
+          "decision_id",
+          "decision",
+          "at",
+          "signature"
+        ],
+        "title": "Approval",
+        "type": "object"
+      },
       "Capacity": {
         "properties": {
           "accepting": {
@@ -1421,6 +1498,41 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/agent/v1/approvals": {
+      "post": {
+        "description": "The Hub knows a decision by the calling node and its decision_id. The agent sends\na decision again when it cannot tell whether it arrived: one the Hub already holds\ngets the same answer and is not stored twice.",
+        "operationId": "post_approval_api_agent_v1_approvals_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Approval"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "A data manager's signed approval, refusal or withdrawal",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/api/agent/v1/poll": {
       "post": {
         "operationId": "poll_api_agent_v1_poll_post",

@@ -376,3 +376,21 @@ class PollResponse(BaseModel):
     tasks: list[TaskEnvelope]
     pending_approvals: list[PendingApproval]
     control: list[ControlMessage]
+
+
+# Approvals
+
+
+class Approval(BaseModel):
+    """A data manager's decision on a study version or a workflow, signed with the node key"""
+
+    kind: Literal["study", "workflow"]
+    study_id: str
+    study_version: int
+    study_digest: Digest
+    workflow_digest: Digest | None = Field(None, description="Only for a workflow.")
+    node: str
+    decision_id: int = Field(description="The node's own id for it, unique only within the node.")
+    decision: Literal["approved", "refused", "withdrawn"]
+    at: datetime
+    signature: str

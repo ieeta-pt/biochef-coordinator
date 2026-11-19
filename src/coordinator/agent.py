@@ -10,6 +10,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response
 
 from coordinator.models import (
+    Approval,
     ControlMessage,
     Lease,
     PendingApproval,
@@ -198,3 +199,14 @@ async def get_study_version(study_id: str, version: int) -> StudyVersion:
 )
 async def get_workflow(digest: str) -> Workflow:
     return WORKFLOW
+
+
+@router.post(
+    "/approvals",
+    status_code=204,
+    summary="A data manager's signed approval, refusal or withdrawal",
+)
+async def post_approval(approval: Approval) -> None:
+    """The Hub knows a decision by the calling node and its decision_id. The agent sends
+    a decision again when it cannot tell whether it arrived: one the Hub already holds
+    gets the same answer and is not stored twice."""
