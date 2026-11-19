@@ -7,12 +7,13 @@ checked or stored yet.
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Header, Response
 
 from coordinator.models import (
     Approval,
     ControlMessage,
     Lease,
+    PartialCommit,
     PendingApproval,
     PollRequest,
     PollResponse,
@@ -243,3 +244,41 @@ async def post_task_decision(task_id: str, attempt: int, decision: TaskDecision)
 )
 async def post_task_event(task_id: str, attempt: int, event: TaskEvent) -> None:
     """The same state also arrives in the next poll, so a lost event only costs delay."""
+
+
+@router.put(
+    "/tasks/{task_id}/attempts/{attempt}/partial",
+    status_code=204,
+    responses=TASK_NOT_FOUND
+    | {409: {"model": Problem, "description": "Different bytes were already uploaded."}},
+    summary="Upload the encrypted partial",
+    # The body is the ciphertext itself, not JSON.
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/octet-stream": {"schema": {"type": "string", "format": "binary"}}
+            },
+        }
+    },
+)
+async def put_partial(
+    task_id: str,
+    attempt: int,
+    digest: Annotated[
+        str, Header(alias="Digest", description="sha-256=<base64 of the body's SHA-256>")
+    ],
+) -> None:
+    """The Hub checks the lease and the digest. Uploading the same bytes again changes nothing."""
+
+
+@router.post(
+    "/tasks/{task_id}/attempts/{attempt}/commit",
+    responses=TASK_NOT_FOUND,
+    summary="Commit the partial with the node's signed statement",
+)
+async def commit_partial(task_id: str, attempt: int, commit: PartialCommit) -> PartialCommit:
+    """The Hub makes the partial available to the member who submitted the job. A repeated
+    commit returns the stored one. A result withheld at barrier 1 is committed as withheld,
+    with no partial and no subject, so the job can finish."""
+    return commit

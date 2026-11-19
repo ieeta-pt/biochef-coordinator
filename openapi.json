@@ -664,6 +664,33 @@
         "title": "Partial",
         "type": "object"
       },
+      "PartialCommit": {
+        "description": "The node's outer statement on a partial, signed with the node key",
+        "properties": {
+          "decision": {
+            "enum": [
+              "released",
+              "withheld"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "signature": {
+            "title": "Signature",
+            "type": "string"
+          },
+          "statement": {
+            "$ref": "#/components/schemas/Statement"
+          }
+        },
+        "required": [
+          "decision",
+          "statement",
+          "signature"
+        ],
+        "title": "PartialCommit",
+        "type": "object"
+      },
       "PartialPredicate": {
         "properties": {
           "attempt": {
@@ -1756,6 +1783,78 @@
         ]
       }
     },
+    "/api/agent/v1/tasks/{task_id}/attempts/{attempt}/commit": {
+      "post": {
+        "description": "The Hub makes the partial available to the member who submitted the job. A repeated\ncommit returns the stored one. A result withheld at barrier 1 is committed as withheld,\nwith no partial and no subject, so the job can finish.",
+        "operationId": "commit_partial_api_agent_v1_tasks__task_id__attempts__attempt__commit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attempt",
+            "required": true,
+            "schema": {
+              "title": "Attempt",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartialCommit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartialCommit"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not a task of the calling node, not its current attempt, or its lease is no longer valid."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Commit the partial with the node's signed statement",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/api/agent/v1/tasks/{task_id}/attempts/{attempt}/decision": {
       "post": {
         "description": "A refusal is final for that request at that node, except no_capacity, which puts\nthe task back in the queue without using an attempt.",
@@ -1881,6 +1980,93 @@
           }
         },
         "summary": "Report a state change at once instead of on the next poll",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/api/agent/v1/tasks/{task_id}/attempts/{attempt}/partial": {
+      "put": {
+        "description": "The Hub checks the lease and the digest. Uploading the same bytes again changes nothing.",
+        "operationId": "put_partial_api_agent_v1_tasks__task_id__attempts__attempt__partial_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attempt",
+            "required": true,
+            "schema": {
+              "title": "Attempt",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "sha-256=<base64 of the body's SHA-256>",
+            "in": "header",
+            "name": "Digest",
+            "required": true,
+            "schema": {
+              "description": "sha-256=<base64 of the body's SHA-256>",
+              "title": "Digest",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not a task of the calling node, not its current attempt, or its lease is no longer valid."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Different bytes were already uploaded."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Upload the encrypted partial",
         "tags": [
           "agent"
         ]

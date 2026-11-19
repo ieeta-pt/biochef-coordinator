@@ -437,3 +437,11 @@ class TaskEvent(BaseModel):
     reason: str | None = Field(
         None, description="Only when failed: a code, such as tool_verification_failed."
     )
+
+
+class PartialCommit(BaseModel):
+    """The node's outer statement on a partial, signed with the node key"""
+
+    decision: Literal["released", "withheld"]
+    statement: Statement
+    signature: str
