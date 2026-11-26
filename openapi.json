@@ -112,77 +112,26 @@
       },
       "Approval": {
         "additionalProperties": false,
-        "description": "A data manager's decision on a study version or a workflow, signed with the node key",
+        "description": "POST /approvals: a decision on a study or workflow version, as the node sends it",
         "properties": {
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
           "decision": {
-            "enum": [
-              "approved",
-              "refused",
-              "withdrawn"
-            ],
-            "title": "Decision",
-            "type": "string"
+            "$ref": "#/components/schemas/VersionDecision"
           },
           "decision_id": {
-            "description": "The node's own id for it, unique only within the node.",
+            "description": "The node's id for the decision, unique only within the node. With the calling node it names the decision, so sending it again is harmless.",
             "title": "Decision Id",
             "type": "integer"
           },
-          "kind": {
-            "enum": [
-              "study",
-              "workflow"
-            ],
-            "title": "Kind",
-            "type": "string"
-          },
-          "node": {
-            "title": "Node",
-            "type": "string"
-          },
           "signature": {
+            "description": "The node's signature over the RFC 8785 form of decision.",
+            "pattern": "^[A-Za-z0-9_-]{86}$",
             "title": "Signature",
             "type": "string"
-          },
-          "study_digest": {
-            "title": "Study Digest",
-            "type": "string"
-          },
-          "study_id": {
-            "title": "Study Id",
-            "type": "string"
-          },
-          "study_version": {
-            "title": "Study Version",
-            "type": "integer"
-          },
-          "workflow_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Only for a workflow.",
-            "title": "Workflow Digest"
           }
         },
         "required": [
-          "kind",
-          "study_id",
-          "study_version",
-          "study_digest",
-          "node",
           "decision_id",
           "decision",
-          "at",
           "signature"
         ],
         "title": "Approval",
@@ -1562,6 +1511,117 @@
         "title": "ToolData",
         "type": "object"
       },
+      "VersionDecision": {
+        "additionalProperties": false,
+        "description": "A data manager's approval, refusal or withdrawal of a study or workflow version",
+        "properties": {
+          "action": {
+            "enum": [
+              "approve",
+              "refuse",
+              "withdraw"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the data manager wrote, if anything.",
+            "title": "Comment"
+          },
+          "dac_confirmed": {
+            "anyOf": [
+              {
+                "const": true,
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only on approving a study version, and then required: the data access committee has granted access.",
+            "title": "Dac Confirmed"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "const": "superseded",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "superseded when approving a newer version of the study withdrew this one.",
+            "title": "Reason"
+          },
+          "schema": {
+            "const": "biochef.node-decision.v1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "subject_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The digest of the study version or the workflow.",
+            "title": "Subject Hash"
+          },
+          "subject_id": {
+            "description": "The node's own id for the subject: its row id for a study or workflow version, the request_id for a request.",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_type": {
+            "enum": [
+              "study_version",
+              "workflow_version"
+            ],
+            "title": "Subject Type",
+            "type": "string"
+          },
+          "user": {
+            "description": "Who decided, as the TRE's login names them; \"agent\" when the agent did.",
+            "title": "User",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema",
+          "node",
+          "subject_id",
+          "subject_hash",
+          "user",
+          "comment",
+          "at",
+          "subject_type",
+          "action",
+          "reason"
+        ],
+        "title": "VersionDecision",
+        "type": "object"
+      },
       "Workflow": {
         "additionalProperties": false,
         "description": "A BioChef workflow in canonical form (3.4). Its digest identifies it.",
@@ -1713,7 +1773,7 @@
   "paths": {
     "/api/agent/v1/approvals": {
       "post": {
-        "description": "The coordinator knows a decision by the calling node and its decision_id. The agent\nsends a decision again when it cannot tell whether it arrived: one already held\ngets the same answer and is not stored twice.",
+        "description": "The coordinator knows a decision by the calling node and its decision_id. The agent\nsends a decision again when it cannot tell whether it arrived: one already held\ngets the same answer and is not stored twice. The signature is checked against the\ncalling node's signing key on the site list, and decision.node must be that node.",
         "operationId": "post_approval_api_agent_v1_approvals_post",
         "requestBody": {
           "content": {

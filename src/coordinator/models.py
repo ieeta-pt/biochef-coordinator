@@ -481,22 +481,67 @@ class PollResponse(BaseModel):
     control: list[ControlMessage]
 
 
-# Approvals
+Ed25519Signature = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{86}$")]
+"""An Ed25519 signature: 64 bytes in base64url without padding."""
+
+
+class NodeDecision(Signed):
+    """A decision exactly as the agent builds and signs it (biochef.node-decision.v1).
+
+    The node signs its RFC 8785 form with its Ed25519 key. Decisions on study versions,
+    workflow versions and requests leave the node; those on runs, egress and dataset
+    bindings stay in it.
+    """
+
+    schema_: Literal["biochef.node-decision.v1"] = Field(alias="schema")
+    node: str
+    subject_id: str = Field(
+        description="The node's own id for the subject: its row id for a study or workflow "
+        "version, the request_id for a request."
+    )
+    subject_hash: Digest | None = Field(
+        description="The digest of the study version or the workflow."
+    )
+    user: str = Field(
+        description='Who decided, as the TRE\'s login names them; "agent" when the agent did.'
+    )
+    comment: str | None = Field(description="What the data manager wrote, if anything.")
+    at: Timestamp
+
+
+class VersionDecision(NodeDecision):
+    """A data manager's approval, refusal or withdrawal of a study or workflow version"""
+
+    subject_type: Literal["study_version", "workflow_version"]
+    action: Literal["approve", "refuse", "withdraw"]
+    reason: Literal["superseded"] | None = Field(
+        description="superseded when approving a newer version of the study withdrew this one."
+    )
+    dac_confirmed: Literal[True] | None = Field(
+        None,
+        description="Only on approving a study version, and then required: the data access "
+        "committee has granted access.",
+    )
+
+    @model_validator(mode="after")
+    def _dac_only_on_study_approval(self) -> Self:
+        study_approval = self.subject_type == "study_version" and self.action == "approve"
+        if study_approval != (self.dac_confirmed is True):
+            raise ValueError("dac_confirmed belongs to a study approval, which needs it")
+        return self
 
 
 class Approval(Signed):
-    """A data manager's decision on a study version or a workflow, signed with the node key"""
+    """POST /approvals: a decision on a study or workflow version, as the node sends it"""
 
-    kind: Literal["study", "workflow"]
-    study_id: str
-    study_version: int
-    study_digest: Digest
-    workflow_digest: Digest | None = Field(None, description="Only for a workflow.")
-    node: str
-    decision_id: int = Field(description="The node's own id for it, unique only within the node.")
-    decision: Literal["approved", "refused", "withdrawn"]
-    at: Timestamp
-    signature: str
+    decision_id: int = Field(
+        description="The node's id for the decision, unique only within the node. With the "
+        "calling node it names the decision, so sending it again is harmless."
+    )
+    decision: VersionDecision
+    signature: Ed25519Signature = Field(
+        description="The node's signature over the RFC 8785 form of decision."
+    )
 
 
 # Tasks

@@ -253,7 +253,8 @@ async def get_workflow(digest: str) -> Workflow:
 async def post_approval(approval: Approval) -> None:
     """The coordinator knows a decision by the calling node and its decision_id. The agent
     sends a decision again when it cannot tell whether it arrived: one already held
-    gets the same answer and is not stored twice."""
+    gets the same answer and is not stored twice. The signature is checked against the
+    calling node's signing key on the site list, and decision.node must be that node."""
 
 
 @router.post(
