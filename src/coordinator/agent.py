@@ -45,6 +45,28 @@ WORKFLOW_DIGEST = "sha256:41ab..."
 POLL_INTERVAL_S = 10
 LEASE_S = 3 * POLL_INTERVAL_S
 
+# Synthetic member keys. m-01's are the test vector in biochef-infra docs/identity.md.
+MEMBER_KEYS = {
+    "m-01": {
+        "signing_key": {
+            "kty": "EC",
+            "crv": "P-256",
+            "x": "AO1cfutKPq_Pj_qgqcxF6mw7pf0zvS0bOTf3G-GON1s",
+            "y": "HjpzF_k9FmBSD7iiJq3QrtNRFM_uF0xVckpsACGAf38",
+        },
+        "result_key": "age1vpw3jerf7764tnxv0jvwg9umcmstqf2zxwvezp4xpeetjxwsgsdsesfryj",
+    },
+    "m-02": {
+        "signing_key": {
+            "kty": "EC",
+            "crv": "P-256",
+            "x": "MCkhgR_EhFA02uM0Ypg4Jd1s6uFdNQn03y5o6659Trs",
+            "y": "-dzFB0Tpy3oYOp1E8NiDxoEjrG38n6BwNuxpNKYwbXI",
+        },
+        "result_key": "age1pc6dxh9vdwmrw28knpnde34c7ja5cfqhtlyl69x53t9exe2g7f0qcva2nn",
+    },
+}
+
 # The site list as the federation signed it. The coordinator sends these bytes
 # as they are: the signature covers them, so parsing and writing the document
 # again would break it.
@@ -79,8 +101,7 @@ def study_version(study_id: str, version: int) -> StudyVersion:
         return {
             "member": member,
             "ls_aai_id": ls_aai_id,
-            "signing_key": {"kty": "EC", "crv": "P-256", "x": "f83O...", "y": "x_FE..."},
-            "result_key": "age1qyqszqgpqyqszqgp...",
+            **MEMBER_KEYS[member],
             "binding_token": "eyJhbGciOiJSUzI1NiIs...",
         }
 

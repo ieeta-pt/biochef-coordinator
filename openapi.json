@@ -429,7 +429,8 @@
         "type": "object"
       },
       "KeyRegistration": {
-        "description": "PUT /me/keys (7.1).",
+        "additionalProperties": false,
+        "description": "PUT /me/keys.\n\nThe nonce of binding_token is the hash of these keys exactly as sent (biochef-infra\ndocs/identity.md), so keys in any other form are refused, never normalised: a\nnormalised key would hash to something the member never signed in for.",
         "properties": {
           "binding_token": {
             "description": "LS Login ID token whose nonce is the hash of both keys (8).",
@@ -438,6 +439,7 @@
           },
           "result_key": {
             "description": "The age public key that partials are encrypted for.",
+            "pattern": "^age1[02-9ac-hj-np-z]{58}$",
             "title": "Result Key",
             "type": "string"
           },
@@ -533,6 +535,7 @@
             "type": "string"
           },
           "result_key": {
+            "pattern": "^age1[02-9ac-hj-np-z]{58}$",
             "title": "Result Key",
             "type": "string"
           },
@@ -972,7 +975,7 @@
       },
       "SigningKey": {
         "additionalProperties": false,
-        "description": "A member's public signing key, as a P-256 JWK.",
+        "description": "A member's public signing key, as a P-256 JWK with exactly crv, kty, x and y.",
         "properties": {
           "crv": {
             "const": "P-256",
@@ -985,10 +988,12 @@
             "type": "string"
           },
           "x": {
+            "pattern": "^[A-Za-z0-9_-]{43}$",
             "title": "X",
             "type": "string"
           },
           "y": {
+            "pattern": "^[A-Za-z0-9_-]{43}$",
             "title": "Y",
             "type": "string"
           }

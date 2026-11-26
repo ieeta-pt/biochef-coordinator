@@ -4,10 +4,18 @@ These are API documents, not database tables. The shapes come from the spec
 ("BioChef Coordination Hub API"); the numbers in the docstrings are its sections.
 """
 
+import base64
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, WithJsonSchema
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    WithJsonSchema,
+)
 
 Digest = str
 """A SHA-256 digest, written sha256:<hex>."""
@@ -49,20 +57,45 @@ class Signed(BaseModel):
 # Members and their keys
 
 
+def _is_32_bytes(value: str) -> str:
+    # 43 characters hold 258 bits; the last 2 must be zero, or two spellings decode
+    # to the same coordinate.
+    decoded = base64.urlsafe_b64decode(value + "=")
+    if base64.urlsafe_b64encode(decoded).rstrip(b"=").decode() != value:
+        raise ValueError("not the canonical base64url form of 32 bytes")
+    return value
+
+
+Coordinate = Annotated[
+    str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{43}$"), AfterValidator(_is_32_bytes)
+]
+"""A P-256 coordinate: 32 bytes, leading zeros kept, base64url without padding."""
+
+AgeRecipient = Annotated[str, StringConstraints(pattern=r"^age1[02-9ac-hj-np-z]{58}$")]
+"""An age X25519 recipient, in lowercase."""
+
+
 class SigningKey(Signed):
-    """A member's public signing key, as a P-256 JWK."""
+    """A member's public signing key, as a P-256 JWK with exactly crv, kty, x and y."""
 
     kty: Literal["EC"]
     crv: Literal["P-256"]
-    x: str
-    y: str
+    x: Coordinate
+    y: Coordinate
 
 
-class KeyRegistration(BaseModel):
-    """PUT /me/keys (7.1)."""
+class KeyRegistration(Signed):
+    """PUT /me/keys.
+
+    The nonce of binding_token is the hash of these keys exactly as sent (biochef-infra
+    docs/identity.md), so keys in any other form are refused, never normalised: a
+    normalised key would hash to something the member never signed in for.
+    """
 
     signing_key: SigningKey
-    result_key: str = Field(description="The age public key that partials are encrypted for.")
+    result_key: AgeRecipient = Field(
+        description="The age public key that partials are encrypted for."
+    )
     binding_token: str = Field(
         description="LS Login ID token whose nonce is the hash of both keys (8)."
     )
@@ -74,7 +107,7 @@ class Member(Signed):
     member: str
     ls_aai_id: str
     signing_key: SigningKey
-    result_key: str
+    result_key: AgeRecipient
     binding_token: str
 
 
