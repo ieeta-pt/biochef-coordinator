@@ -42,7 +42,8 @@ CurrentNode = Annotated[str, Depends(current_node)]
 
 STUDY_DIGEST = "sha256:9f2c..."
 WORKFLOW_DIGEST = "sha256:41ab..."
-POLL_INTERVAL_S = 10
+# The agent's default interval (BIOCHEF_COORDINATOR_POLL_SECONDS).
+POLL_INTERVAL_S = 30
 LEASE_S = 3 * POLL_INTERVAL_S
 
 # Synthetic member keys. m-01's are the test vector in biochef-infra docs/identity.md.

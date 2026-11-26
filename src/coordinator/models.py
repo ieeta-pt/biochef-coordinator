@@ -474,7 +474,11 @@ class ControlMessage(BaseModel):
 
 class PollResponse(BaseModel):
     server_time: datetime
-    next_poll_after_s: int
+    next_poll_after_s: int = Field(
+        description="Seconds to wait before the next poll; 30 unless the coordinator is "
+        "slowing agents down. A lease lasts three of these intervals, so an agent that polls "
+        "less often than this loses its tasks."
+    )
     leases: list[Lease]
     tasks: list[TaskEnvelope]
     pending_approvals: list[PendingApproval]
