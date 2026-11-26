@@ -138,6 +138,7 @@ def study_version(study_id: str, version: int) -> StudyVersion:
                 "types": ["TEXT", "TSV"],
                 "max_bytes": 1048576,
             },
+            "result_recipients": "submitter",
             "proposer": "m-01",
             "signature": "MEQC...",
         }
@@ -302,7 +303,7 @@ async def put_partial(
     response_model_exclude_unset=True,
 )
 async def commit_partial(task_id: str, attempt: int, commit: PartialCommit) -> PartialCommit:
-    """The coordinator makes the partial available to the member who submitted the job.
+    """The coordinator makes the partial available to the study's result recipients.
     A repeated commit returns the stored one. A result withheld at barrier 1 is committed
     as withheld, with no partial and no subject, so the job can finish."""
     return commit

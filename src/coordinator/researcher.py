@@ -121,7 +121,7 @@ def partial(node: str, task_id: str) -> Partial:
             "workflow_digest": WORKFLOW_DIGEST,
             "node": node,
             "ciphertext_size": 18231,
-            "recipient_key": "sha256:c41e...",
+            "recipient_keys": ["sha256:c41e..."],
         },
     }
     return Partial(
@@ -295,8 +295,10 @@ async def cancel_job(job_id: str) -> JobState:
 
 @router.get(
     "/jobs/{job_id}/partials",
-    summary="The encrypted partials, for the submitter only",
+    summary="The encrypted partials, for the study's result recipients",
     response_model_exclude_unset=True,
 )
 async def list_partials(job_id: str) -> list[Partial]:
+    """Only for the result recipients the approved study version names: the member who
+    submitted the job, or every member when result_recipients is all_members."""
     return [partial("biodata-pt", "tk_7a3d..."), partial("ifb-fr", "tk_7a4e...")]

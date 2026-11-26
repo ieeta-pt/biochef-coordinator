@@ -623,7 +623,7 @@
         "type": "object"
       },
       "Partial": {
-        "description": "One node's result for a job, encrypted for the submitter",
+        "description": "One node's result for a job, encrypted for the study's result recipients",
         "properties": {
           "attempt": {
             "title": "Attempt",
@@ -722,17 +722,20 @@
             "title": "Node",
             "type": "string"
           },
-          "recipient_key": {
+          "recipient_keys": {
             "anyOf": [
               {
-                "type": "string"
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "Fingerprint of the submitter's key.",
-            "title": "Recipient Key"
+            "description": "Fingerprints of the result keys the partial is encrypted for: the submitter's, or every member's (result_recipients).",
+            "title": "Recipient Keys"
           },
           "request_id": {
             "title": "Request Id",
@@ -1258,6 +1261,15 @@
             "title": "Proposer",
             "type": "string"
           },
+          "result_recipients": {
+            "description": "Who can read the results: the member who submitted the job, or every member. The nodes approve it with the rest of the version, and each partial is encrypted for these members' result keys.",
+            "enum": [
+              "submitter",
+              "all_members"
+            ],
+            "title": "Result Recipients",
+            "type": "string"
+          },
           "signature": {
             "title": "Signature",
             "type": "string"
@@ -1278,6 +1290,7 @@
           "members",
           "nodes",
           "output_rules",
+          "result_recipients",
           "proposer",
           "signature"
         ],
@@ -1810,7 +1823,7 @@
     },
     "/api/agent/v1/tasks/{task_id}/attempts/{attempt}/commit": {
       "post": {
-        "description": "The coordinator makes the partial available to the member who submitted the job.\nA repeated commit returns the stored one. A result withheld at barrier 1 is committed\nas withheld, with no partial and no subject, so the job can finish.",
+        "description": "The coordinator makes the partial available to the study's result recipients.\nA repeated commit returns the stored one. A result withheld at barrier 1 is committed\nas withheld, with no partial and no subject, so the job can finish.",
         "operationId": "commit_partial_api_agent_v1_tasks__task_id__attempts__attempt__commit_post",
         "parameters": [
           {
@@ -2289,6 +2302,7 @@
     },
     "/api/v1/jobs/{job_id}/partials": {
       "get": {
+        "description": "Only for the result recipients the approved study version names: the member who\nsubmitted the job, or every member when result_recipients is all_members.",
         "operationId": "list_partials_api_v1_jobs__job_id__partials_get",
         "parameters": [
           {
@@ -2327,7 +2341,7 @@
             "description": "The request is not valid."
           }
         },
-        "summary": "The encrypted partials, for the submitter only",
+        "summary": "The encrypted partials, for the study's result recipients",
         "tags": [
           "researcher"
         ]

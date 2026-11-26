@@ -137,6 +137,11 @@ class StudyVersion(Signed):
     members: list[Member]
     nodes: list[StudyNode]
     output_rules: OutputRules
+    result_recipients: Literal["submitter", "all_members"] = Field(
+        description="Who can read the results: the member who submitted the job, or every "
+        "member. The nodes approve it with the rest of the version, and each partial is "
+        "encrypted for these members' result keys."
+    )
     proposer: str
     signature: str
 
@@ -309,7 +314,11 @@ class PartialPredicate(Signed):
     workflow_digest: Digest
     node: str
     ciphertext_size: int | None = None
-    recipient_key: Digest | None = Field(None, description="Fingerprint of the submitter's key.")
+    recipient_keys: list[Digest] | None = Field(
+        None,
+        description="Fingerprints of the result keys the partial is encrypted for: the "
+        "submitter's, or every member's (result_recipients).",
+    )
 
 
 class Statement(Signed):
@@ -322,7 +331,7 @@ class Statement(Signed):
 
 
 class Partial(BaseModel):
-    """One node's result for a job, encrypted for the submitter"""
+    """One node's result for a job, encrypted for the study's result recipients"""
 
     node: str
     attempt: int
