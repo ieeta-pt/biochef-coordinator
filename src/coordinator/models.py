@@ -548,47 +548,67 @@ class Approval(Signed):
 
 RefusalReason = Literal[
     "bad_signature",
-    "key_not_in_study",
     "wrong_node",
     "study_not_approved",
     "workflow_not_approved",
-    "workflow_digest_mismatch",
-    "request_replayed",
+    "dataset_not_in_study",
     "expired",
+    "replay",
+    "cannot_decrypt",
+    "hash_mismatch",
     "visa_missing",
-    "visa_expired",
-    "visa_untrusted_issuer",
-    "visa_subject_mismatch",
-    "dataset_unknown",
-    "no_capacity",
+    "dataset_not_bound",
 ]
-"""Why an agent refuses a task. A code only, so nothing about the data leaves the node."""
+"""Why an agent refuses a task: the first of its checks that failed, in the order it runs
+them (biochef-agent docs/agent-ui/SPEC.md section 6.3). A code only, so nothing about
+the data leaves the node."""
 
 FailureReason = Literal[
-    "visa_missing",
-    "visa_expired",
-    "visa_untrusted_issuer",
-    "visa_subject_mismatch",
     "tool_unavailable",
     "tool_verification_failed",
     "executor_error",
     "system_error",
 ]
-"""Why an accepted task failed: the visas no longer held when the run started, a tool
-could not be fetched or verified, a step failed (the agent's EXECUTOR_ERROR) or the agent
-did (SYSTEM_ERROR). A code only: logs and step output never leave the node."""
+"""Why an accepted task failed: a tool could not be fetched or verified, a step failed
+(the agent's EXECUTOR_ERROR) or the agent did (SYSTEM_ERROR). A code only: logs and step
+output never leave the node."""
+
+
+class RequestRefusal(NodeDecision):
+    """The agent's own refusal of a request, signed like any decision of the node"""
+
+    subject_type: Literal["request"]
+    action: Literal["refuse"]
+    subject_hash: None = Field(description="Always null: a request has no digest here.")
+    reason: RefusalReason
+
+
+class TaskRefusal(Signed):
+    """A refusal as the node sends it. Its subject_id is the task's request_id"""
+
+    decision_id: int = Field(
+        description="The node's id for the decision, unique only within the node."
+    )
+    decision: RequestRefusal
+    signature: Ed25519Signature = Field(
+        description="The node's signature over the RFC 8785 form of decision."
+    )
 
 
 class TaskDecision(BaseModel):
-    """The agent's answer to a delivered task, after its local checks"""
+    """The agent's verdict on a delivered task, after its checks"""
 
-    decision: Literal["accept", "refuse"]
-    reason: RefusalReason | None = Field(None, description="Only when refusing, and then required.")
+    verdict: Literal["accepted", "refused"]
+    refusal: TaskRefusal | None = Field(
+        None,
+        description="Only when refused, and then required: the node's signed refusal, so the "
+        "member sees why and the coordinator cannot make one up.",
+    )
 
     @model_validator(mode="after")
-    def _reason_only_when_refusing(self) -> Self:
-        if (self.decision == "refuse") != (self.reason is not None):
-            raise ValueError("a refusal needs a reason, and an acceptance has none")
+    def _refusal_only_when_refused(self) -> Self:
+        if (self.verdict == "refused") != (self.refusal is not None):
+            raise ValueError("a refused verdict needs its signed refusal, an accepted one has none")
         return self
 
 

@@ -917,6 +917,94 @@
         "title": "Problem",
         "type": "object"
       },
+      "RequestRefusal": {
+        "additionalProperties": false,
+        "description": "The agent's own refusal of a request, signed like any decision of the node",
+        "properties": {
+          "action": {
+            "const": "refuse",
+            "title": "Action",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the data manager wrote, if anything.",
+            "title": "Comment"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "bad_signature",
+              "wrong_node",
+              "study_not_approved",
+              "workflow_not_approved",
+              "dataset_not_in_study",
+              "expired",
+              "replay",
+              "cannot_decrypt",
+              "hash_mismatch",
+              "visa_missing",
+              "dataset_not_bound"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "schema": {
+            "const": "biochef.node-decision.v1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "subject_hash": {
+            "description": "Always null: a request has no digest here.",
+            "title": "Subject Hash",
+            "type": "null"
+          },
+          "subject_id": {
+            "description": "The node's own id for the subject: its row id for a study or workflow version, the request_id for a request.",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_type": {
+            "const": "request",
+            "title": "Subject Type",
+            "type": "string"
+          },
+          "user": {
+            "description": "Who decided, as the TRE's login names them; \"agent\" when the agent did.",
+            "title": "User",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema",
+          "node",
+          "subject_id",
+          "subject_hash",
+          "user",
+          "comment",
+          "at",
+          "subject_type",
+          "action",
+          "reason"
+        ],
+        "title": "RequestRefusal",
+        "type": "object"
+      },
       "Signature": {
         "additionalProperties": false,
         "properties": {
@@ -1319,47 +1407,30 @@
         "type": "object"
       },
       "TaskDecision": {
-        "description": "The agent's answer to a delivered task, after its local checks",
+        "description": "The agent's verdict on a delivered task, after its checks",
         "properties": {
-          "decision": {
-            "enum": [
-              "accept",
-              "refuse"
-            ],
-            "title": "Decision",
-            "type": "string"
-          },
-          "reason": {
+          "refusal": {
             "anyOf": [
               {
-                "enum": [
-                  "bad_signature",
-                  "key_not_in_study",
-                  "wrong_node",
-                  "study_not_approved",
-                  "workflow_not_approved",
-                  "workflow_digest_mismatch",
-                  "request_replayed",
-                  "expired",
-                  "visa_missing",
-                  "visa_expired",
-                  "visa_untrusted_issuer",
-                  "visa_subject_mismatch",
-                  "dataset_unknown",
-                  "no_capacity"
-                ],
-                "type": "string"
+                "$ref": "#/components/schemas/TaskRefusal"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "Only when refusing, and then required.",
-            "title": "Reason"
+            "description": "Only when refused, and then required: the node's signed refusal, so the member sees why and the coordinator cannot make one up."
+          },
+          "verdict": {
+            "enum": [
+              "accepted",
+              "refused"
+            ],
+            "title": "Verdict",
+            "type": "string"
           }
         },
         "required": [
-          "decision"
+          "verdict"
         ],
         "title": "TaskDecision",
         "type": "object"
@@ -1412,10 +1483,6 @@
             "anyOf": [
               {
                 "enum": [
-                  "visa_missing",
-                  "visa_expired",
-                  "visa_untrusted_issuer",
-                  "visa_subject_mismatch",
                   "tool_unavailable",
                   "tool_verification_failed",
                   "executor_error",
@@ -1454,6 +1521,33 @@
           "state"
         ],
         "title": "TaskEvent",
+        "type": "object"
+      },
+      "TaskRefusal": {
+        "additionalProperties": false,
+        "description": "A refusal as the node sends it. Its subject_id is the task's request_id",
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/RequestRefusal"
+          },
+          "decision_id": {
+            "description": "The node's id for the decision, unique only within the node.",
+            "title": "Decision Id",
+            "type": "integer"
+          },
+          "signature": {
+            "description": "The node's signature over the RFC 8785 form of decision.",
+            "pattern": "^[A-Za-z0-9_-]{86}$",
+            "title": "Signature",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision_id",
+          "decision",
+          "signature"
+        ],
+        "title": "TaskRefusal",
         "type": "object"
       },
       "TaskState": {
@@ -2011,7 +2105,7 @@
     },
     "/api/agent/v1/tasks/{task_id}/attempts/{attempt}/decision": {
       "post": {
-        "description": "A refusal is final for that request at that node, except no_capacity, which puts\nthe task back in the queue without using an attempt.",
+        "description": "A refusal is final for that request at that node: the same request delivered again\ngets the same refusal.",
         "operationId": "post_task_decision_api_agent_v1_tasks__task_id__attempts__attempt__decision_post",
         "parameters": [
           {

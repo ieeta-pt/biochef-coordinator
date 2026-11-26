@@ -264,8 +264,8 @@ async def post_approval(approval: Approval) -> None:
     summary="Accept or refuse a delivered task after the local checks",
 )
 async def post_task_decision(task_id: str, attempt: int, decision: TaskDecision) -> None:
-    """A refusal is final for that request at that node, except no_capacity, which puts
-    the task back in the queue without using an attempt."""
+    """A refusal is final for that request at that node: the same request delivered again
+    gets the same refusal."""
 
 
 @router.post(
