@@ -5,18 +5,51 @@ These are API documents, not database tables. The shapes come from the spec
 """
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, WithJsonSchema
 
 Digest = str
 """A SHA-256 digest, written sha256:<hex>."""
 
 
+def _says_its_zone(value: str) -> str:
+    try:
+        moment = datetime.fromisoformat(value)
+    except ValueError:
+        raise ValueError("not an ISO 8601 date and time") from None
+    if moment.tzinfo is None:
+        raise ValueError("an ISO 8601 date and time must say its zone")
+    return value
+
+
+Timestamp = Annotated[
+    str,
+    AfterValidator(_says_its_zone),
+    WithJsonSchema({"type": "string", "format": "date-time"}),
+]
+"""A date and time inside a signed document, kept as the exact string that was signed."""
+
+
+class Signed(BaseModel):
+    """A document, or part of one, that someone signed or hashed.
+
+    The coordinator passes these on to whoever checks the signature, so it must hand
+    on exactly what it received: a field dropped, or a value written another way
+    (2026-10-29T00:00:00.000Z becoming 2026-10-29T00:00:00Z, "3" becoming 3), breaks
+    the signature far from where it happened. So the model only checks. An unknown
+    field or a value of the wrong type is refused, not dropped or converted, and a
+    date and time stays the string that was signed. Routes that send one back set
+    response_model_exclude_unset, so a field the sender left out stays out.
+    """
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
 # Members and their keys
 
 
-class SigningKey(BaseModel):
+class SigningKey(Signed):
     """A member's public signing key, as a P-256 JWK."""
 
     kty: Literal["EC"]
@@ -35,7 +68,7 @@ class KeyRegistration(BaseModel):
     )
 
 
-class Member(BaseModel):
+class Member(Signed):
     """A researcher as listed in a study version (7.1)."""
 
     member: str
@@ -48,20 +81,20 @@ class Member(BaseModel):
 # Studies
 
 
-class StudyNode(BaseModel):
+class StudyNode(Signed):
     node: str
     encryption_key: Digest = Field(description="Fingerprint of the node's encryption key.")
     datasets: list[str]
 
 
-class OutputRules(BaseModel):
+class OutputRules(Signed):
     aggregates_only: bool
     min_count: int
     types: list[str]
     max_bytes: int
 
 
-class StudyVersion(BaseModel):
+class StudyVersion(Signed):
     """One version of a study, signed by its proposer (7.1). Each node approves its digest."""
 
     study_id: str
@@ -99,25 +132,25 @@ class Study(BaseModel):
 # Workflows
 
 
-class ToolData(BaseModel):
+class ToolData(Signed):
     repo: str = Field(description="The tool, pinned by digest.")
     paramValues: dict[str, Any]
 
 
-class WorkflowNode(BaseModel):
+class WorkflowNode(Signed):
     id: str
     type: Literal["workflowNode", "inputWorkflowNode", "outputWorkflowNode"]
     data: ToolData | None = Field(None, description="Only on tool nodes (workflowNode).")
 
 
-class WorkflowEdge(BaseModel):
+class WorkflowEdge(Signed):
     source: str
     sourceHandle: str
     target: str
     targetHandle: str | None = None
 
 
-class Workflow(BaseModel):
+class Workflow(Signed):
     """A BioChef workflow in canonical form (3.4). Its digest identifies it."""
 
     nodes: list[WorkflowNode]
@@ -156,7 +189,7 @@ class LibraryWorkflow(BaseModel):
 # Jobs
 
 
-class JobRequest(BaseModel):
+class JobRequest(Signed):
     """What the member signs, once per node"""
 
     request_id: str
@@ -167,17 +200,17 @@ class JobRequest(BaseModel):
     member: str
     node: str
     datasets: list[str]
-    not_after: datetime
+    not_after: Timestamp
     payload_digest: Digest
 
 
-class Signature(BaseModel):
+class Signature(Signed):
     alg: Literal["ES256"]
     key: str
     sig: str
 
 
-class EncryptedPayload(BaseModel):
+class EncryptedPayload(Signed):
     enc: Literal["age-x25519"]
     ciphertext: str = Field(description="Base64. Only the node can decrypt it.")
 
@@ -228,12 +261,12 @@ class JobState(BaseModel):
 # Results
 
 
-class StatementSubject(BaseModel):
+class StatementSubject(Signed):
     name: str
     digest: dict[str, str]
 
 
-class PartialPredicate(BaseModel):
+class PartialPredicate(Signed):
     request_id: str
     task_id: str
     attempt: int
@@ -246,14 +279,12 @@ class PartialPredicate(BaseModel):
     recipient_key: Digest | None = Field(None, description="Fingerprint of the submitter's key.")
 
 
-class Statement(BaseModel):
+class Statement(Signed):
     """A node's outer statement on a partial, as an in-toto Statement"""
 
-    type: str = Field("https://in-toto.io/Statement/v1", alias="_type")
-    subject: list[StatementSubject] = Field(
-        default_factory=list, description="Empty when the result was withheld."
-    )
-    predicateType: str = "https://biochef.app/partial/v1"
+    type: Literal["https://in-toto.io/Statement/v1"] = Field(alias="_type")
+    subject: list[StatementSubject] = Field(description="Empty when the result was withheld.")
+    predicateType: Literal["https://biochef.app/partial/v1"]
     predicate: PartialPredicate
 
 
@@ -385,7 +416,7 @@ class PollResponse(BaseModel):
 # Approvals
 
 
-class Approval(BaseModel):
+class Approval(Signed):
     """A data manager's decision on a study version or a workflow, signed with the node key"""
 
     kind: Literal["study", "workflow"]
@@ -396,7 +427,7 @@ class Approval(BaseModel):
     node: str
     decision_id: int = Field(description="The node's own id for it, unique only within the node.")
     decision: Literal["approved", "refused", "withdrawn"]
-    at: datetime
+    at: Timestamp
     signature: str
 
 
@@ -439,7 +470,7 @@ class TaskEvent(BaseModel):
     )
 
 
-class PartialCommit(BaseModel):
+class PartialCommit(Signed):
     """The node's outer statement on a partial, signed with the node key"""
 
     decision: Literal["released", "withheld"]

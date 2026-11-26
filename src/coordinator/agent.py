@@ -88,7 +88,7 @@ def study_version(study_id: str, version: int) -> StudyVersion:
         {
             "study_id": study_id,
             "version": version,
-            "previous_digest": "sha256:1c7e..." if version > 1 else None,
+            **({"previous_digest": "sha256:1c7e..."} if version > 1 else {}),
             "goal": "Allele frequencies of variant X in three cohorts",
             "members": [
                 member("m-01", "a1b2c3...@lifescience-ri.eu"),
@@ -138,7 +138,7 @@ def task_for(node: str, now: datetime) -> TaskEnvelope:
                 "member": "m-02",
                 "node": node,
                 "datasets": ["EGAD00001001234"],
-                "not_after": now + timedelta(days=7),
+                "not_after": f"{now + timedelta(days=7):%Y-%m-%dT%H:%M:%SZ}",
                 "payload_digest": "sha256:77d1...",
             },
             "signature": {"alg": "ES256", "key": "m-02/sign", "sig": "MEQC..."},
@@ -174,6 +174,7 @@ async def get_site_list() -> Response:
 @router.post(
     "/poll",
     summary="Heartbeat: states and capacity go up; tasks, approvals and control messages come down",
+    response_model_exclude_unset=True,
 )
 async def poll(body: PollRequest, node: CurrentNode) -> PollResponse:
     now = datetime.now(UTC).replace(microsecond=0)
@@ -199,6 +200,7 @@ async def poll(body: PollRequest, node: CurrentNode) -> PollResponse:
 @router.get(
     "/studies/{study_id}/versions/{version}",
     summary="A study version waiting for this node's approval",
+    response_model_exclude_unset=True,
 )
 async def get_study_version(study_id: str, version: int) -> StudyVersion:
     return study_version(study_id, version)
@@ -207,8 +209,7 @@ async def get_study_version(study_id: str, version: int) -> StudyVersion:
 @router.get(
     "/workflows/{digest}",
     summary="A workflow waiting for this node's approval",
-    # Input nodes carry no data in the canonical form (spec 3.4): leave it out, not null.
-    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
 )
 async def get_workflow(digest: str) -> Workflow:
     return WORKFLOW
@@ -277,6 +278,7 @@ async def put_partial(
     "/tasks/{task_id}/attempts/{attempt}/commit",
     responses=TASK_NOT_FOUND,
     summary="Commit the partial with the node's signed statement",
+    response_model_exclude_unset=True,
 )
 async def commit_partial(task_id: str, attempt: int, commit: PartialCommit) -> PartialCommit:
     """The coordinator makes the partial available to the member who submitted the job.

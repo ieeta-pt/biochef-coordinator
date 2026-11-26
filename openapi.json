@@ -111,6 +111,7 @@
         "type": "object"
       },
       "Approval": {
+        "additionalProperties": false,
         "description": "A data manager's decision on a study version or a workflow, signed with the node key",
         "properties": {
           "at": {
@@ -236,6 +237,7 @@
         "type": "object"
       },
       "EncryptedPayload": {
+        "additionalProperties": false,
         "properties": {
           "ciphertext": {
             "description": "Base64. Only the node can decrypt it.",
@@ -276,6 +278,7 @@
         "type": "object"
       },
       "JobRequest": {
+        "additionalProperties": false,
         "description": "What the member signs, once per node",
         "properties": {
           "datasets": {
@@ -514,6 +517,7 @@
         "type": "object"
       },
       "Member": {
+        "additionalProperties": false,
         "description": "A researcher as listed in a study version (7.1).",
         "properties": {
           "binding_token": {
@@ -584,6 +588,7 @@
         "type": "object"
       },
       "OutputRules": {
+        "additionalProperties": false,
         "properties": {
           "aggregates_only": {
             "title": "Aggregates Only",
@@ -665,6 +670,7 @@
         "type": "object"
       },
       "PartialCommit": {
+        "additionalProperties": false,
         "description": "The node's outer statement on a partial, signed with the node key",
         "properties": {
           "decision": {
@@ -692,6 +698,7 @@
         "type": "object"
       },
       "PartialPredicate": {
+        "additionalProperties": false,
         "properties": {
           "attempt": {
             "title": "Attempt",
@@ -919,6 +926,7 @@
         "type": "object"
       },
       "Signature": {
+        "additionalProperties": false,
         "properties": {
           "alg": {
             "const": "ES256",
@@ -963,6 +971,7 @@
         "type": "object"
       },
       "SigningKey": {
+        "additionalProperties": false,
         "description": "A member's public signing key, as a P-256 JWK.",
         "properties": {
           "crv": {
@@ -1098,10 +1107,11 @@
         "type": "object"
       },
       "Statement": {
+        "additionalProperties": false,
         "description": "A node's outer statement on a partial, as an in-toto Statement",
         "properties": {
           "_type": {
-            "default": "https://in-toto.io/Statement/v1",
+            "const": "https://in-toto.io/Statement/v1",
             "title": "Type",
             "type": "string"
           },
@@ -1109,7 +1119,7 @@
             "$ref": "#/components/schemas/PartialPredicate"
           },
           "predicateType": {
-            "default": "https://biochef.app/partial/v1",
+            "const": "https://biochef.app/partial/v1",
             "title": "Predicatetype",
             "type": "string"
           },
@@ -1123,12 +1133,16 @@
           }
         },
         "required": [
+          "_type",
+          "subject",
+          "predicateType",
           "predicate"
         ],
         "title": "Statement",
         "type": "object"
       },
       "StatementSubject": {
+        "additionalProperties": false,
         "properties": {
           "digest": {
             "additionalProperties": {
@@ -1172,6 +1186,7 @@
         "type": "object"
       },
       "StudyNode": {
+        "additionalProperties": false,
         "properties": {
           "datasets": {
             "items": {
@@ -1199,6 +1214,7 @@
         "type": "object"
       },
       "StudyVersion": {
+        "additionalProperties": false,
         "description": "One version of a study, signed by its proposer (7.1). Each node approves its digest.",
         "properties": {
           "goal": {
@@ -1452,6 +1468,7 @@
         "type": "object"
       },
       "ToolData": {
+        "additionalProperties": false,
         "properties": {
           "paramValues": {
             "additionalProperties": true,
@@ -1472,6 +1489,7 @@
         "type": "object"
       },
       "Workflow": {
+        "additionalProperties": false,
         "description": "A BioChef workflow in canonical form (3.4). Its digest identifies it.",
         "properties": {
           "edges": {
@@ -1497,6 +1515,7 @@
         "type": "object"
       },
       "WorkflowEdge": {
+        "additionalProperties": false,
         "properties": {
           "source": {
             "title": "Source",
@@ -1531,6 +1550,7 @@
         "type": "object"
       },
       "WorkflowNode": {
+        "additionalProperties": false,
         "properties": {
           "data": {
             "anyOf": [

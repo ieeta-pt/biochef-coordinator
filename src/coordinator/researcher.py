@@ -146,7 +146,11 @@ async def list_sites() -> list[SiteStatus]:
     ]
 
 
-@router.put("/me/keys", summary="Register the caller's signing key and result key")
+@router.put(
+    "/me/keys",
+    summary="Register the caller's signing key and result key",
+    response_model_exclude_unset=True,
+)
 async def register_keys(keys: KeyRegistration, member: CurrentMember) -> Member:
     return Member(member=member, ls_aai_id="d4e5f6...@lifescience-ri.eu", **keys.model_dump())
 
@@ -217,8 +221,7 @@ async def withdraw_workflow(study_id: str, digest: str) -> WorkflowStatus:
 @router.get(
     "/library/workflows",
     summary="Pre-configured workflows, linked to WorkflowHub",
-    # Input nodes carry no data in the canonical form (spec 3.4): leave it out, not null.
-    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
 )
 async def list_library_workflows() -> list[LibraryWorkflow]:
     return [
@@ -290,6 +293,10 @@ async def cancel_job(job_id: str) -> JobState:
     return job_state(job_id, "running", [(n, "running", 1) for n in NODES])
 
 
-@router.get("/jobs/{job_id}/partials", summary="The encrypted partials, for the submitter only")
+@router.get(
+    "/jobs/{job_id}/partials",
+    summary="The encrypted partials, for the submitter only",
+    response_model_exclude_unset=True,
+)
 async def list_partials(job_id: str) -> list[Partial]:
     return [partial("biodata-pt", "tk_7a3d..."), partial("ifb-fr", "tk_7a4e...")]
