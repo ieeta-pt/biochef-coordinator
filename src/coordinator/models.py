@@ -6,7 +6,7 @@ These are API documents, not database tables. The shapes come from the spec
 
 import base64
 from datetime import datetime
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import (
     AfterValidator,
@@ -15,6 +15,7 @@ from pydantic import (
     Field,
     StringConstraints,
     WithJsonSchema,
+    model_validator,
 )
 
 Digest = str
@@ -518,12 +519,32 @@ RefusalReason = Literal[
 ]
 """Why an agent refuses a task. A code only, so nothing about the data leaves the node."""
 
+FailureReason = Literal[
+    "visa_missing",
+    "visa_expired",
+    "visa_untrusted_issuer",
+    "visa_subject_mismatch",
+    "tool_unavailable",
+    "tool_verification_failed",
+    "executor_error",
+    "system_error",
+]
+"""Why an accepted task failed: the visas no longer held when the run started, a tool
+could not be fetched or verified, a step failed (the agent's EXECUTOR_ERROR) or the agent
+did (SYSTEM_ERROR). A code only: logs and step output never leave the node."""
+
 
 class TaskDecision(BaseModel):
     """The agent's answer to a delivered task, after its local checks"""
 
     decision: Literal["accept", "refuse"]
-    reason: RefusalReason | None = Field(None, description="Only when refusing.")
+    reason: RefusalReason | None = Field(None, description="Only when refusing, and then required.")
+
+    @model_validator(mode="after")
+    def _reason_only_when_refusing(self) -> Self:
+        if (self.decision == "refuse") != (self.reason is not None):
+            raise ValueError("a refusal needs a reason, and an acceptance has none")
+        return self
 
 
 class TaskEvent(BaseModel):
@@ -532,9 +553,15 @@ class TaskEvent(BaseModel):
     seq: int = Field(description="Increases within each attempt, to drop duplicates and spot gaps.")
     at: datetime
     state: AgentTaskState
-    reason: str | None = Field(
-        None, description="Only when failed: a code, such as tool_verification_failed."
+    reason: FailureReason | None = Field(
+        None, description="Only when failed, and then required. Never free text."
     )
+
+    @model_validator(mode="after")
+    def _reason_only_when_failed(self) -> Self:
+        if (self.state == "failed") != (self.reason is not None):
+            raise ValueError("a failed state needs a reason, and no other state has one")
+        return self
 
 
 class PartialCommit(Signed):

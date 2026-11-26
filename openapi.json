@@ -1405,7 +1405,7 @@
                 "type": "null"
               }
             ],
-            "description": "Only when refusing.",
+            "description": "Only when refusing, and then required.",
             "title": "Reason"
           }
         },
@@ -1462,13 +1462,23 @@
           "reason": {
             "anyOf": [
               {
+                "enum": [
+                  "visa_missing",
+                  "visa_expired",
+                  "visa_untrusted_issuer",
+                  "visa_subject_mismatch",
+                  "tool_unavailable",
+                  "tool_verification_failed",
+                  "executor_error",
+                  "system_error"
+                ],
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "Only when failed: a code, such as tool_verification_failed.",
+            "description": "Only when failed, and then required. Never free text.",
             "title": "Reason"
           },
           "seq": {
