@@ -207,7 +207,6 @@ class AddWorkflow(BaseModel):
 
     study_version: int
     workflow: Workflow
-    workflowhub_id: str | None = None
 
 
 class WorkflowStatus(BaseModel):
@@ -215,20 +214,8 @@ class WorkflowStatus(BaseModel):
 
     digest: Digest
     study_version: int
-    workflowhub_id: str | None
     withdrawn: bool
     approvals: list[NodeApproval]
-
-
-class LibraryWorkflow(BaseModel):
-    """A pre-configured workflow, linked to WorkflowHub (7)."""
-
-    name: str
-    version: str
-    description: str
-    workflowhub_id: str
-    digest: Digest
-    workflow: Workflow
 
 
 # Jobs

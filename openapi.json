@@ -47,17 +47,6 @@
           },
           "workflow": {
             "$ref": "#/components/schemas/Workflow"
-          },
-          "workflowhub_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workflowhub Id"
           }
         },
         "required": [
@@ -427,44 +416,6 @@
           "valid"
         ],
         "title": "Lease",
-        "type": "object"
-      },
-      "LibraryWorkflow": {
-        "description": "A pre-configured workflow, linked to WorkflowHub (7).",
-        "properties": {
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "digest": {
-            "title": "Digest",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "version": {
-            "title": "Version",
-            "type": "string"
-          },
-          "workflow": {
-            "$ref": "#/components/schemas/Workflow"
-          },
-          "workflowhub_id": {
-            "title": "Workflowhub Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name",
-          "version",
-          "description",
-          "workflowhub_id",
-          "digest",
-          "workflow"
-        ],
-        "title": "LibraryWorkflow",
         "type": "object"
       },
       "LsLoginKey": {
@@ -1834,23 +1785,11 @@
           "withdrawn": {
             "title": "Withdrawn",
             "type": "boolean"
-          },
-          "workflowhub_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workflowhub Id"
           }
         },
         "required": [
           "digest",
           "study_version",
-          "workflowhub_id",
           "withdrawn",
           "approvals"
         ],
@@ -2553,41 +2492,6 @@
           }
         },
         "summary": "The encrypted partials, for the study's result recipients",
-        "tags": [
-          "researcher"
-        ]
-      }
-    },
-    "/api/v1/library/workflows": {
-      "get": {
-        "operationId": "list_library_workflows_api_v1_library_workflows_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/LibraryWorkflow"
-                  },
-                  "title": "Response List Library Workflows Api V1 Library Workflows Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "The request is not valid."
-          }
-        },
-        "summary": "Pre-configured workflows, linked to WorkflowHub",
         "tags": [
           "researcher"
         ]

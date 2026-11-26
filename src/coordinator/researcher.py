@@ -17,7 +17,6 @@ from coordinator.models import (
     JobState,
     JobSubmission,
     KeyRegistration,
-    LibraryWorkflow,
     Member,
     NodeApproval,
     Partial,
@@ -86,7 +85,6 @@ WORKFLOW = Workflow.model_validate(
 WORKFLOW_STATUS = WorkflowStatus(
     digest=WORKFLOW_DIGEST,
     study_version=3,
-    workflowhub_id="https://workflowhub.eu/workflows/1234?version=2",
     withdrawn=False,
     approvals=approvals("approved"),
 )
@@ -202,7 +200,6 @@ async def add_workflow(study_id: str, body: AddWorkflow) -> WorkflowStatus:
     return WorkflowStatus(
         digest=WORKFLOW_DIGEST,
         study_version=body.study_version,
-        workflowhub_id=body.workflowhub_id,
         withdrawn=False,
         approvals=approvals("pending"),
     )
@@ -219,24 +216,6 @@ async def list_workflows(study_id: str) -> list[WorkflowStatus]:
 )
 async def withdraw_workflow(study_id: str, digest: str) -> WorkflowStatus:
     return WORKFLOW_STATUS.model_copy(update={"digest": digest, "withdrawn": True})
-
-
-@router.get(
-    "/library/workflows",
-    summary="Pre-configured workflows, linked to WorkflowHub",
-    response_model_exclude_unset=True,
-)
-async def list_library_workflows() -> list[LibraryWorkflow]:
-    return [
-        LibraryWorkflow(
-            name="FASTA statistics",
-            version="2",
-            description="Counts and composition of the sequences in a FASTA file.",
-            workflowhub_id="https://workflowhub.eu/workflows/1234?version=2",
-            digest=WORKFLOW_DIGEST,
-            workflow=WORKFLOW,
-        )
-    ]
 
 
 # Jobs
