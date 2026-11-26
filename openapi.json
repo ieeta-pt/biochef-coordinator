@@ -518,6 +518,42 @@
         "title": "LibraryWorkflow",
         "type": "object"
       },
+      "LsLoginKey": {
+        "description": "A key LS Login signs ID tokens with, now or in the past",
+        "properties": {
+          "jwk": {
+            "additionalProperties": true,
+            "description": "The public key as LS Login published it, with kid.",
+            "title": "Jwk",
+            "type": "object"
+          },
+          "published_from": {
+            "description": "When LS Login started publishing it.",
+            "format": "date-time",
+            "title": "Published From",
+            "type": "string"
+          },
+          "published_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When LS Login stopped publishing it. Absent while it still does.",
+            "title": "Published Until"
+          }
+        },
+        "required": [
+          "jwk",
+          "published_from"
+        ],
+        "title": "LsLoginKey",
+        "type": "object"
+      },
       "Member": {
         "additionalProperties": false,
         "description": "A researcher as listed in a study version (7.1).",
@@ -1020,6 +1056,14 @@
             "title": "Expires At",
             "type": "string"
           },
+          "ls_login_keys": {
+            "description": "The history of LS Login's signing keys. A node checks each member's binding_token against it, so the token can still be checked after LS Login rotates its keys.",
+            "items": {
+              "$ref": "#/components/schemas/LsLoginKey"
+            },
+            "title": "Ls Login Keys",
+            "type": "array"
+          },
           "nodes": {
             "items": {
               "$ref": "#/components/schemas/SiteListNode"
@@ -1036,7 +1080,8 @@
         "required": [
           "version",
           "expires_at",
-          "nodes"
+          "nodes",
+          "ls_login_keys"
         ],
         "title": "SiteList",
         "type": "object"

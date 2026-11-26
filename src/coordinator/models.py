@@ -368,12 +368,27 @@ class SiteListNode(BaseModel):
     certificate: Digest = Field(description="Fingerprint of the node's client certificate.")
 
 
+class LsLoginKey(BaseModel):
+    """A key LS Login signs ID tokens with, now or in the past"""
+
+    jwk: dict[str, Any] = Field(description="The public key as LS Login published it, with kid.")
+    published_from: datetime = Field(description="When LS Login started publishing it.")
+    published_until: datetime | None = Field(
+        None, description="When LS Login stopped publishing it. Absent while it still does."
+    )
+
+
 class SiteList(BaseModel):
     """The federation's site list. The coordinator serves it byte for byte, as it was signed"""
 
     version: int = Field(description="Increases with every new list.")
     expires_at: datetime = Field(description="ISO 8601, with its zone.")
     nodes: list[SiteListNode]
+    ls_login_keys: list[LsLoginKey] = Field(
+        description="The history of LS Login's signing keys. A node checks each member's "
+        "binding_token against it, so the token can still be checked after LS Login rotates "
+        "its keys."
+    )
 
 
 # Polling

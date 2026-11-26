@@ -80,6 +80,14 @@ SITE_LIST = b"""{
      "certificate": "sha256:c07d..."},
     {"node": "nottingham", "encryption_key": "age1m4tk...", "signing_key": "MCowBQYDK2VwAyEA...",
      "certificate": "sha256:9a62..."}
+  ],
+  "ls_login_keys": [
+    {"jwk": {"kty": "RSA", "kid": "2026-04", "alg": "RS256", "use": "sig", "n": "0vx7agoe...",
+             "e": "AQAB"},
+     "published_from": "2026-04-01T00:00:00Z", "published_until": "2026-10-01T00:00:00Z"},
+    {"jwk": {"kty": "RSA", "kid": "2026-10", "alg": "RS256", "use": "sig", "n": "xjlCRBqk...",
+             "e": "AQAB"},
+     "published_from": "2026-10-01T00:00:00Z"}
   ]
 }
 """
