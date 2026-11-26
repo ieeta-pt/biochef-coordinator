@@ -39,7 +39,7 @@
         "type": "object"
       },
       "AddWorkflow": {
-        "description": "POST /studies/{id}/workflows (7).",
+        "description": "POST /studies/{id}/workflows",
         "properties": {
           "study_version": {
             "title": "Study Version",
@@ -176,9 +176,10 @@
       },
       "EncryptedPayload": {
         "additionalProperties": false,
+        "description": "The task's payload, encrypted for the node with age.\n\nDecrypted, it is a JSON object: workflow, the workflow to run, whose digest must be\nworkflow_digest, and visas, the member's GA4GH visas as JWTs.",
         "properties": {
           "ciphertext": {
-            "description": "Base64. Only the node can decrypt it.",
+            "description": "The age ciphertext, in its binary form, in base64.",
             "title": "Ciphertext",
             "type": "string"
           },
@@ -217,7 +218,7 @@
       },
       "JobRequest": {
         "additionalProperties": false,
-        "description": "What the member signs, once per node",
+        "description": "What the member signs, once per node, with ES256 over its RFC 8785 form",
         "properties": {
           "datasets": {
             "items": {
@@ -240,6 +241,7 @@
             "type": "string"
           },
           "payload_digest": {
+            "description": "The SHA-256 of the decrypted payload.",
             "title": "Payload Digest",
             "type": "string"
           },
@@ -371,7 +373,7 @@
         "description": "PUT /me/keys.\n\nThe nonce of binding_token is the hash of these keys exactly as sent (biochef-infra\ndocs/identity.md), so keys in any other form are refused, never normalised: a\nnormalised key would hash to something the member never signed in for.",
         "properties": {
           "binding_token": {
-            "description": "LS Login ID token whose nonce is the hash of both keys (8).",
+            "description": "LS Login ID token whose nonce is the hash of both keys.",
             "title": "Binding Token",
             "type": "string"
           },
@@ -456,7 +458,7 @@
       },
       "Member": {
         "additionalProperties": false,
-        "description": "A researcher as listed in a study version (7.1).",
+        "description": "A researcher as listed in a study version",
         "properties": {
           "binding_token": {
             "title": "Binding Token",
@@ -467,6 +469,7 @@
             "type": "string"
           },
           "member": {
+            "description": "The member's id in the study, an opaque value such as m-02. Never shown as a name.",
             "title": "Member",
             "type": "string"
           },
@@ -543,6 +546,7 @@
             "type": "integer"
           },
           "types": {
+            "description": "File name suffixes allowed to leave, compared exactly with what follows the last dot, such as tsv.",
             "items": {
               "type": "string"
             },
@@ -575,7 +579,7 @@
                 "type": "null"
               }
             ],
-            "description": "Base64. None when withheld.",
+            "description": "The age ciphertext, in its binary form, in base64. None when withheld.",
             "title": "Ciphertext"
           },
           "decision": {
@@ -591,7 +595,8 @@
             "type": "string"
           },
           "signature": {
-            "description": "The node's signature over the statement.",
+            "description": "The node's signature over the RFC 8785 form of statement.",
+            "pattern": "^[A-Za-z0-9_-]{86}$",
             "title": "Signature",
             "type": "string"
           },
@@ -622,6 +627,8 @@
             "type": "string"
           },
           "signature": {
+            "description": "The node's signature over the RFC 8785 form of statement.",
+            "pattern": "^[A-Za-z0-9_-]{86}$",
             "title": "Signature",
             "type": "string"
           },
@@ -653,6 +660,7 @@
                 "type": "null"
               }
             ],
+            "description": "The length of ciphertext as the partial carries it, in base64.",
             "title": "Ciphertext Size"
           },
           "node": {
@@ -671,7 +679,7 @@
                 "type": "null"
               }
             ],
-            "description": "Fingerprints of the result keys the partial is encrypted for: the submitter's, or every member's (result_recipients).",
+            "description": "The result keys the partial is encrypted for: the submitter's, or every member's (result_recipients). Each is the SHA-256 of the age recipient string.",
             "title": "Recipient Keys"
           },
           "request_id": {
@@ -959,6 +967,7 @@
       },
       "Signature": {
         "additionalProperties": false,
+        "description": "The member's signature on job_request",
         "properties": {
           "alg": {
             "const": "ES256",
@@ -966,17 +975,26 @@
             "type": "string"
           },
           "key": {
-            "title": "Key",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Informative only: the node checks the signature with the signing key the study version lists for member.",
+            "title": "Key"
           },
           "sig": {
+            "description": "r and s, 32 bytes each, in base64url without padding.",
+            "pattern": "^[A-Za-z0-9_-]{86}$",
             "title": "Sig",
             "type": "string"
           }
         },
         "required": [
           "alg",
-          "key",
           "sig"
         ],
         "title": "Signature",
@@ -1207,7 +1225,7 @@
         "type": "object"
       },
       "Study": {
-        "description": "GET /studies/{id}: the versions and each node's approval (7).",
+        "description": "GET /studies/{id}: the versions and each node's approval",
         "properties": {
           "study_id": {
             "title": "Study Id",
@@ -1258,7 +1276,7 @@
       },
       "StudyVersion": {
         "additionalProperties": false,
-        "description": "One version of a study, signed by its proposer (7.1). Each node approves its digest.",
+        "description": "One version of a study, signed by its proposer.\n\nEach node approves its digest: the SHA-256 of its RFC 8785 form without signature.",
         "properties": {
           "goal": {
             "title": "Goal",
@@ -1670,7 +1688,7 @@
       },
       "Workflow": {
         "additionalProperties": false,
-        "description": "A BioChef workflow in canonical form (3.4). Its digest identifies it.",
+        "description": "A BioChef workflow, exactly as the member signs it.\n\nIts digest identifies it: the SHA-256 of its RFC 8785 form.",
         "properties": {
           "edges": {
             "items": {
@@ -1765,7 +1783,7 @@
         "type": "object"
       },
       "WorkflowStatus": {
-        "description": "A workflow of a study and each node's approval (7).",
+        "description": "A workflow of a study and each node's approval",
         "properties": {
           "approvals": {
             "items": {

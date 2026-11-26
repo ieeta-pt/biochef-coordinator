@@ -1,7 +1,6 @@
-"""The agent-facing API (spec section 3), with mock responses.
+"""The agent-facing API, with mock responses.
 
-Every operation answers with fixed example data taken from the spec. Nothing is
-checked or stored yet.
+Every operation answers with fixed example data. Nothing is checked or stored yet.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -37,8 +36,6 @@ def current_node() -> str:
 
 CurrentNode = Annotated[str, Depends(current_node)]
 
-
-# Mock data
 
 STUDY_DIGEST = "sha256:9f2c..."
 WORKFLOW_DIGEST = "sha256:41ab..."
@@ -144,7 +141,7 @@ def study_version(study_id: str, version: int) -> StudyVersion:
             "output_rules": {
                 "aggregates_only": True,
                 "min_count": 10,
-                "types": ["TEXT", "TSV"],
+                "types": ["tsv", "txt"],
                 "max_bytes": 1048576,
             },
             "result_recipients": "submitter",
@@ -172,7 +169,11 @@ def task_for(node: str, now: datetime) -> TaskEnvelope:
                 "not_after": f"{now + timedelta(days=7):%Y-%m-%dT%H:%M:%SZ}",
                 "payload_digest": "sha256:77d1...",
             },
-            "signature": {"alg": "ES256", "key": "m-02/sign", "sig": "MEQC..."},
+            "signature": {
+                "alg": "ES256",
+                "sig": "bobNhux-wvGPdvB6n0CSs1b_L6OUorYQozoK5wNb0AHoC-"
+                "kTP8lx_H2lse3WApBvbgvNUxk3sGAUckbypHT0Vw",
+            },
             "payload": {"enc": "age-x25519", "ciphertext": "YWdlLWVuY3J5cHRpb24..."},
         }
     )
@@ -213,12 +214,10 @@ async def poll(body: PollRequest, node: CurrentNode) -> PollResponse:
     return PollResponse(
         server_time=now,
         next_poll_after_s=POLL_INTERVAL_S,
-        # Listing a lease renews it.
         leases=[
             Lease(lease_id=t.lease_id, expires_at=now + timedelta(seconds=LEASE_S), valid=True)
             for t in body.active
         ],
-        # Never more tasks than free slots, and none when the agent is not accepting.
         tasks=[task_for(node, now)] if capacity.accepting and capacity.slots_free > 0 else [],
         pending_approvals=[
             PendingApproval(kind="study", study_id="st-01", version=4, digest="sha256:e07b..."),
@@ -285,7 +284,6 @@ async def post_task_event(task_id: str, attempt: int, event: TaskEvent) -> None:
     responses=TASK_NOT_FOUND
     | {409: {"model": Problem, "description": "Different bytes were already uploaded."}},
     summary="Upload the encrypted partial",
-    # The body is the ciphertext itself, not JSON.
     openapi_extra={
         "requestBody": {
             "required": True,

@@ -1,7 +1,6 @@
-"""The researcher-facing API (spec section 7), with mock responses.
+"""The researcher-facing API, with mock responses.
 
-Every operation answers with fixed example data taken from the spec. Nothing is
-checked or stored yet.
+Every operation answers with fixed example data. Nothing is checked or stored yet.
 """
 
 import asyncio
@@ -41,8 +40,6 @@ def current_member() -> str:
 
 CurrentMember = Annotated[str, Depends(current_member)]
 
-
-# Mock data, from the spec's examples.
 
 NODES = ["biodata-pt", "ifb-fr", "nottingham"]
 STUDY_DIGEST = "sha256:9f2c..."
@@ -127,12 +124,9 @@ def partial(node: str, task_id: str) -> Partial:
         attempt=1,
         decision="released",
         statement=Statement.model_validate(statement),
-        signature="MEUC...",
+        signature="BacLPlMNQfOgNvm90spWuuTV_-1xPaLPdwHYnKJ2zIs8145tevYvLhwj2bLc7kuOE5mxsisenuto7WJ2ZEGgxw",
         ciphertext="YWdlLWVuY3J5cHRpb24...",
     )
-
-
-# Nodes and keys
 
 
 @router.get("/sites", summary="Each node's status")
@@ -151,9 +145,6 @@ async def list_sites() -> list[SiteStatus]:
 )
 async def register_keys(keys: KeyRegistration, member: CurrentMember) -> Member:
     return Member(member=member, ls_aai_id="d4e5f6...@lifescience-ri.eu", **keys.model_dump())
-
-
-# Studies
 
 
 @router.post("/studies", status_code=201, summary="Propose a study")
@@ -188,9 +179,6 @@ async def get_study(study_id: str) -> Study:
     )
 
 
-# Workflows
-
-
 @router.post(
     "/studies/{study_id}/workflows",
     status_code=201,
@@ -216,9 +204,6 @@ async def list_workflows(study_id: str) -> list[WorkflowStatus]:
 )
 async def withdraw_workflow(study_id: str, digest: str) -> WorkflowStatus:
     return WORKFLOW_STATUS.model_copy(update={"digest": digest, "withdrawn": True})
-
-
-# Jobs
 
 
 @router.post("/studies/{study_id}/jobs", status_code=201, summary="Submit a job")
@@ -256,7 +241,6 @@ async def get_job(job_id: str) -> JobState:
     summary="Live progress of the job, as server-sent events",
 )
 async def job_events(job_id: str) -> AsyncIterator[JobState]:
-    # A scripted run: every task goes from queued to partial_delivered.
     for task_state in ["queued", "running", "barrier_1", "partial_delivered"]:
         done = task_state == "partial_delivered"
         yield job_state(

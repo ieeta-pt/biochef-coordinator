@@ -1,7 +1,6 @@
 """The JSON bodies the API sends and receives, as Pydantic models.
 
-These are API documents, not database tables. The shapes come from the spec
-("BioChef Coordination Hub API"); the numbers in the docstrings are its sections.
+These are API documents, not database tables.
 """
 
 import base64
@@ -19,7 +18,7 @@ from pydantic import (
 )
 
 Digest = str
-"""A SHA-256 digest, written sha256:<hex>."""
+"""A SHA-256 digest: sha256: and 64 lowercase hex digits."""
 
 
 def _says_its_zone(value: str) -> str:
@@ -55,7 +54,8 @@ class Signed(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
 
-# Members and their keys
+Ed25519Signature = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{86}$")]
+"""A node's Ed25519 signature: 64 bytes in base64url without padding."""
 
 
 def _is_32_bytes(value: str) -> str:
@@ -98,21 +98,21 @@ class KeyRegistration(Signed):
         description="The age public key that partials are encrypted for."
     )
     binding_token: str = Field(
-        description="LS Login ID token whose nonce is the hash of both keys (8)."
+        description="LS Login ID token whose nonce is the hash of both keys."
     )
 
 
 class Member(Signed):
-    """A researcher as listed in a study version (7.1)."""
+    """A researcher as listed in a study version"""
 
-    member: str
+    member: str = Field(
+        description="The member's id in the study, an opaque value such as m-02. Never "
+        "shown as a name."
+    )
     ls_aai_id: str
     signing_key: SigningKey
     result_key: AgeRecipient
     binding_token: str
-
-
-# Studies
 
 
 class StudyNode(Signed):
@@ -124,12 +124,18 @@ class StudyNode(Signed):
 class OutputRules(Signed):
     aggregates_only: bool
     min_count: int
-    types: list[str]
+    types: list[str] = Field(
+        description="File name suffixes allowed to leave, compared exactly with what follows "
+        "the last dot, such as tsv."
+    )
     max_bytes: int
 
 
 class StudyVersion(Signed):
-    """One version of a study, signed by its proposer (7.1). Each node approves its digest."""
+    """One version of a study, signed by its proposer.
+
+    Each node approves its digest: the SHA-256 of its RFC 8785 form without signature.
+    """
 
     study_id: str
     version: int
@@ -168,13 +174,10 @@ class StudyVersionStatus(BaseModel):
 
 
 class Study(BaseModel):
-    """GET /studies/{id}: the versions and each node's approval (7)."""
+    """GET /studies/{id}: the versions and each node's approval"""
 
     study_id: str
     versions: list[StudyVersionStatus]
-
-
-# Workflows
 
 
 class ToolData(Signed):
@@ -196,21 +199,24 @@ class WorkflowEdge(Signed):
 
 
 class Workflow(Signed):
-    """A BioChef workflow in canonical form (3.4). Its digest identifies it."""
+    """A BioChef workflow, exactly as the member signs it.
+
+    Its digest identifies it: the SHA-256 of its RFC 8785 form.
+    """
 
     nodes: list[WorkflowNode]
     edges: list[WorkflowEdge]
 
 
 class AddWorkflow(BaseModel):
-    """POST /studies/{id}/workflows (7)."""
+    """POST /studies/{id}/workflows"""
 
     study_version: int
     workflow: Workflow
 
 
 class WorkflowStatus(BaseModel):
-    """A workflow of a study and each node's approval (7)."""
+    """A workflow of a study and each node's approval"""
 
     digest: Digest
     study_version: int
@@ -218,11 +224,8 @@ class WorkflowStatus(BaseModel):
     approvals: list[NodeApproval]
 
 
-# Jobs
-
-
 class JobRequest(Signed):
-    """What the member signs, once per node"""
+    """What the member signs, once per node, with ES256 over its RFC 8785 form"""
 
     request_id: str
     study_id: str
@@ -233,18 +236,33 @@ class JobRequest(Signed):
     node: str
     datasets: list[str]
     not_after: Timestamp
-    payload_digest: Digest
+    payload_digest: Digest = Field(description="The SHA-256 of the decrypted payload.")
 
 
 class Signature(Signed):
+    """The member's signature on job_request"""
+
     alg: Literal["ES256"]
-    key: str
-    sig: str
+    key: str | None = Field(
+        None,
+        description="Informative only: the node checks the signature with the signing key "
+        "the study version lists for member.",
+    )
+    sig: str = Field(
+        pattern=r"^[A-Za-z0-9_-]{86}$",
+        description="r and s, 32 bytes each, in base64url without padding.",
+    )
 
 
 class EncryptedPayload(Signed):
+    """The task's payload, encrypted for the node with age.
+
+    Decrypted, it is a JSON object: workflow, the workflow to run, whose digest must be
+    workflow_digest, and visas, the member's GA4GH visas as JWTs.
+    """
+
     enc: Literal["age-x25519"]
-    ciphertext: str = Field(description="Base64. Only the node can decrypt it.")
+    ciphertext: str = Field(description="The age ciphertext, in its binary form, in base64.")
 
 
 class SignedJobRequest(BaseModel):
@@ -290,9 +308,6 @@ class JobState(BaseModel):
     tasks: list[TaskState]
 
 
-# Results
-
-
 class StatementSubject(Signed):
     name: str
     digest: dict[str, str]
@@ -307,11 +322,13 @@ class PartialPredicate(Signed):
     study_digest: Digest
     workflow_digest: Digest
     node: str
-    ciphertext_size: int | None = None
+    ciphertext_size: int | None = Field(
+        None, description="The length of ciphertext as the partial carries it, in base64."
+    )
     recipient_keys: list[Digest] | None = Field(
         None,
-        description="Fingerprints of the result keys the partial is encrypted for: the "
-        "submitter's, or every member's (result_recipients).",
+        description="The result keys the partial is encrypted for: the submitter's, or every "
+        "member's (result_recipients). Each is the SHA-256 of the age recipient string.",
     )
 
 
@@ -331,11 +348,12 @@ class Partial(BaseModel):
     attempt: int
     decision: Literal["released", "withheld"]
     statement: Statement
-    signature: str = Field(description="The node's signature over the statement.")
-    ciphertext: str | None = Field(None, description="Base64. None when withheld.")
-
-
-# Nodes
+    signature: Ed25519Signature = Field(
+        description="The node's signature over the RFC 8785 form of statement."
+    )
+    ciphertext: str | None = Field(
+        None, description="The age ciphertext, in its binary form, in base64. None when withheld."
+    )
 
 
 class SiteStatus(BaseModel):
@@ -377,9 +395,6 @@ class SiteList(BaseModel):
         "binding_token against it, so the token can still be checked after LS Login rotates "
         "its keys."
     )
-
-
-# Polling
 
 
 class AgentInfo(BaseModel):
@@ -472,10 +487,6 @@ class PollResponse(BaseModel):
     control: list[ControlMessage]
 
 
-Ed25519Signature = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{86}$")]
-"""An Ed25519 signature: 64 bytes in base64url without padding."""
-
-
 class NodeDecision(Signed):
     """A decision exactly as the agent builds and signs it (biochef.node-decision.v1).
 
@@ -534,8 +545,6 @@ class Approval(Signed):
         description="The node's signature over the RFC 8785 form of decision."
     )
 
-
-# Tasks
 
 RefusalReason = Literal[
     "bad_signature",
@@ -625,4 +634,6 @@ class PartialCommit(Signed):
 
     decision: Literal["released", "withheld"]
     statement: Statement
-    signature: str
+    signature: Ed25519Signature = Field(
+        description="The node's signature over the RFC 8785 form of statement."
+    )

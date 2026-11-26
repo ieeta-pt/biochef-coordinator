@@ -1,8 +1,7 @@
 """Errors as RFC 9457 problem details (application/problem+json).
 
-The spec asks for this format on the agent API (section 3). The service uses it
-for every error, so both APIs look the same, including the errors FastAPI
-produces itself: unknown routes, wrong methods and invalid requests.
+The service uses this format for every error, so both APIs look the same, including
+the errors FastAPI produces itself: unknown routes, wrong methods and invalid requests.
 """
 
 import logging
@@ -71,7 +70,6 @@ async def _invalid_request(request: Request, exc: RequestValidationError) -> JSO
 
 
 async def _unexpected_error(request: Request, exc: Exception) -> JSONResponse:
-    # The traceback goes to the log, not to the caller.
     logger.exception("unhandled error on %s %s", request.method, request.url.path)
     return problem(500)
 
