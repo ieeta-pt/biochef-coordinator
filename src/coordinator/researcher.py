@@ -181,8 +181,11 @@ async def get_study(study_id: str) -> Study:
     return Study(
         study_id=study_id,
         versions=[
-            StudyVersionStatus(version=2, digest="sha256:1c7e...", approvals=approvals("approved")),
+            StudyVersionStatus(
+                version=2, digest="sha256:1c7e...", approvals=approvals("superseded")
+            ),
             StudyVersionStatus(version=3, digest=STUDY_DIGEST, approvals=approvals("approved")),
+            StudyVersionStatus(version=4, digest="sha256:e07b...", approvals=approvals("pending")),
         ],
     )
 

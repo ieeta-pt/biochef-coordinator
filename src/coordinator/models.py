@@ -147,10 +147,16 @@ class StudyVersion(Signed):
 
 
 class NodeApproval(BaseModel):
-    """One node's decision on a study version or a workflow (3.2)."""
+    """Where one node stands on a study version or a workflow.
+
+    A node approves one version of a study at a time. Approving a newer version makes
+    the one it replaces superseded, with that version's workflows, and so does any
+    older version still pending there: it can no longer be approved. A node signs no
+    decision for a version it only skipped.
+    """
 
     node: str
-    decision: Literal["pending", "approved", "refused", "withdrawn"]
+    decision: Literal["pending", "approved", "refused", "withdrawn", "superseded"]
     at: datetime | None = None
 
 
@@ -430,7 +436,11 @@ class TaskEnvelope(BaseModel):
 
 
 class PendingApproval(BaseModel):
-    """A study version or a workflow waiting for this node's data manager"""
+    """A study version or a workflow waiting for this node's data manager.
+
+    Once the node approves a version of a study, older versions it never decided
+    leave its list: the agent marks them superseded and sends no decision for them.
+    """
 
     kind: Literal["study", "workflow"]
     study_id: str

@@ -212,7 +212,7 @@ async def poll(body: PollRequest, node: CurrentNode) -> PollResponse:
         # Never more tasks than free slots, and none when the agent is not accepting.
         tasks=[task_for(node, now)] if capacity.accepting and capacity.slots_free > 0 else [],
         pending_approvals=[
-            PendingApproval(kind="study", study_id="st-01", version=3, digest=STUDY_DIGEST),
+            PendingApproval(kind="study", study_id="st-01", version=4, digest="sha256:e07b..."),
             PendingApproval(kind="workflow", study_id="st-01", version=3, digest=WORKFLOW_DIGEST),
         ],
         control=[ControlMessage(type="cancel", task_id="tk_6ff0...", attempt=1)],

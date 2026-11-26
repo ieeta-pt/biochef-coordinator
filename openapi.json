@@ -554,7 +554,7 @@
         "type": "object"
       },
       "NodeApproval": {
-        "description": "One node's decision on a study version or a workflow (3.2).",
+        "description": "Where one node stands on a study version or a workflow.\n\nA node approves one version of a study at a time. Approving a newer version makes\nthe one it replaces superseded, with that version's workflows, and so does any\nolder version still pending there: it can no longer be approved. A node signs no\ndecision for a version it only skipped.",
         "properties": {
           "at": {
             "anyOf": [
@@ -573,7 +573,8 @@
               "pending",
               "approved",
               "refused",
-              "withdrawn"
+              "withdrawn",
+              "superseded"
             ],
             "title": "Decision",
             "type": "string"
@@ -776,7 +777,7 @@
         "type": "object"
       },
       "PendingApproval": {
-        "description": "A study version or a workflow waiting for this node's data manager",
+        "description": "A study version or a workflow waiting for this node's data manager.\n\nOnce the node approves a version of a study, older versions it never decided\nleave its list: the agent marks them superseded and sends no decision for them.",
         "properties": {
           "digest": {
             "description": "The study version's digest, or the workflow's.",
