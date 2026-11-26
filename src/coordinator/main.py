@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="BioChef Coordination Hub",
+    title="BioChef Coordinator",
     summary="Studies, per-node approvals and jobs that BioChef agents fetch by polling.",
     version=version("biochef-coordinator"),
     lifespan=lifespan,

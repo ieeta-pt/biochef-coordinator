@@ -462,7 +462,7 @@
             "type": "string"
           },
           "valid": {
-            "description": "False when the Hub re-queued or canceled the attempt.",
+            "description": "False when the coordinator re-queued or canceled the attempt.",
             "title": "Valid",
             "type": "boolean"
           }
@@ -994,7 +994,7 @@
         "type": "object"
       },
       "SiteList": {
-        "description": "The federation's site list. The Hub serves it byte for byte, as it was signed",
+        "description": "The federation's site list. The coordinator serves it byte for byte, as it was signed",
         "properties": {
           "expires_at": {
             "description": "ISO 8601, with its zone.",
@@ -1336,7 +1336,7 @@
         "type": "object"
       },
       "TaskEnvelope": {
-        "description": "A task as the Hub delivers it. The Hub adds task_id, attempt and lease_id, unsigned",
+        "description": "A task as the coordinator delivers it, which adds task_id, attempt and lease_id, unsigned",
         "properties": {
           "attempt": {
             "title": "Attempt",
@@ -1612,14 +1612,14 @@
   },
   "info": {
     "summary": "Studies, per-node approvals and jobs that BioChef agents fetch by polling.",
-    "title": "BioChef Coordination Hub",
+    "title": "BioChef Coordinator",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",
   "paths": {
     "/api/agent/v1/approvals": {
       "post": {
-        "description": "The Hub knows a decision by the calling node and its decision_id. The agent sends\na decision again when it cannot tell whether it arrived: one the Hub already holds\ngets the same answer and is not stored twice.",
+        "description": "The coordinator knows a decision by the calling node and its decision_id. The agent\nsends a decision again when it cannot tell whether it arrived: one already held\ngets the same answer and is not stored twice.",
         "operationId": "post_approval_api_agent_v1_approvals_post",
         "requestBody": {
           "content": {
@@ -1785,7 +1785,7 @@
     },
     "/api/agent/v1/tasks/{task_id}/attempts/{attempt}/commit": {
       "post": {
-        "description": "The Hub makes the partial available to the member who submitted the job. A repeated\ncommit returns the stored one. A result withheld at barrier 1 is committed as withheld,\nwith no partial and no subject, so the job can finish.",
+        "description": "The coordinator makes the partial available to the member who submitted the job.\nA repeated commit returns the stored one. A result withheld at barrier 1 is committed\nas withheld, with no partial and no subject, so the job can finish.",
         "operationId": "commit_partial_api_agent_v1_tasks__task_id__attempts__attempt__commit_post",
         "parameters": [
           {
@@ -1987,7 +1987,7 @@
     },
     "/api/agent/v1/tasks/{task_id}/attempts/{attempt}/partial": {
       "put": {
-        "description": "The Hub checks the lease and the digest. Uploading the same bytes again changes nothing.",
+        "description": "The coordinator checks the lease and the digest. Uploading the same bytes again\nchanges nothing.",
         "operationId": "put_partial_api_agent_v1_tasks__task_id__attempts__attempt__partial_put",
         "parameters": [
           {

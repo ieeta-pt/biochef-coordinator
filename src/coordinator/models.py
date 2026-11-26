@@ -290,7 +290,7 @@ class SiteListNode(BaseModel):
 
 
 class SiteList(BaseModel):
-    """The federation's site list. The Hub serves it byte for byte, as it was signed"""
+    """The federation's site list. The coordinator serves it byte for byte, as it was signed"""
 
     version: int = Field(description="Increases with every new list.")
     expires_at: datetime = Field(description="ISO 8601, with its zone.")
@@ -342,11 +342,11 @@ class PollRequest(BaseModel):
 class Lease(BaseModel):
     lease_id: str
     expires_at: datetime
-    valid: bool = Field(description="False when the Hub re-queued or canceled the attempt.")
+    valid: bool = Field(description="False when the coordinator re-queued or canceled the attempt.")
 
 
 class TaskEnvelope(BaseModel):
-    """A task as the Hub delivers it. The Hub adds task_id, attempt and lease_id, unsigned"""
+    """A task as the coordinator delivers it, which adds task_id, attempt and lease_id, unsigned"""
 
     task_id: str
     attempt: int

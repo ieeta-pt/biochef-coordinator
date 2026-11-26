@@ -1,1 +1,1 @@
-"""The BioChef Coordination Hub."""
+"""The BioChef Coordinator."""

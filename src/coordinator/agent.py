@@ -45,9 +45,9 @@ WORKFLOW_DIGEST = "sha256:41ab..."
 POLL_INTERVAL_S = 10
 LEASE_S = 3 * POLL_INTERVAL_S
 
-# The site list as the federation signed it. The Hub sends these bytes as they
-# are: the signature covers them, so parsing and writing the document again
-# would break it.
+# The site list as the federation signed it. The coordinator sends these bytes
+# as they are: the signature covers them, so parsing and writing the document
+# again would break it.
 SITE_LIST = b"""{
   "version": 15,
   "expires_at": "2027-01-01T00:00:00Z",
@@ -220,8 +220,8 @@ async def get_workflow(digest: str) -> Workflow:
     summary="A data manager's signed approval, refusal or withdrawal",
 )
 async def post_approval(approval: Approval) -> None:
-    """The Hub knows a decision by the calling node and its decision_id. The agent sends
-    a decision again when it cannot tell whether it arrived: one the Hub already holds
+    """The coordinator knows a decision by the calling node and its decision_id. The agent
+    sends a decision again when it cannot tell whether it arrived: one already held
     gets the same answer and is not stored twice."""
 
 
@@ -269,7 +269,8 @@ async def put_partial(
         str, Header(alias="Digest", description="sha-256=<base64 of the body's SHA-256>")
     ],
 ) -> None:
-    """The Hub checks the lease and the digest. Uploading the same bytes again changes nothing."""
+    """The coordinator checks the lease and the digest. Uploading the same bytes again
+    changes nothing."""
 
 
 @router.post(
@@ -278,7 +279,7 @@ async def put_partial(
     summary="Commit the partial with the node's signed statement",
 )
 async def commit_partial(task_id: str, attempt: int, commit: PartialCommit) -> PartialCommit:
-    """The Hub makes the partial available to the member who submitted the job. A repeated
-    commit returns the stored one. A result withheld at barrier 1 is committed as withheld,
-    with no partial and no subject, so the job can finish."""
+    """The coordinator makes the partial available to the member who submitted the job.
+    A repeated commit returns the stored one. A result withheld at barrier 1 is committed
+    as withheld, with no partial and no subject, so the job can finish."""
     return commit
