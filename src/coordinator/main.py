@@ -12,7 +12,7 @@ from importlib.metadata import version
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from coordinator import health, problems
+from coordinator import agent, health, problems, researcher
 from coordinator.config import Settings
 
 
@@ -27,10 +27,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="BioChef Coordination Hub",
+    title="BioChef Coordinator",
     summary="Studies, per-node approvals and jobs that BioChef agents fetch by polling.",
     version=version("biochef-coordinator"),
     lifespan=lifespan,
 )
 problems.install(app)
 app.include_router(health.router)
+app.include_router(researcher.router)
+app.include_router(agent.router)

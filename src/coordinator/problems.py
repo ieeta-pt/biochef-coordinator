@@ -1,7 +1,7 @@
 """Errors as RFC 9457 problem details (application/problem+json).
 
-The spec requires this format for every error (section 3), including the ones
-FastAPI produces itself: unknown routes, wrong methods and invalid requests.
+The service uses this format for every error, so both APIs look the same, including
+the errors FastAPI produces itself: unknown routes, wrong methods and invalid requests.
 """
 
 import logging
@@ -11,11 +11,28 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict
 from starlette.exceptions import HTTPException
 
 PROBLEM_JSON = "application/problem+json"
 
 logger = logging.getLogger(__name__)
+
+
+class Problem(BaseModel):
+    """An error, as RFC 9457 problem details. Invalid requests add an errors list."""
+
+    model_config = ConfigDict(extra="allow")
+
+    type: str = "about:blank"
+    title: str
+    status: int
+    detail: str | None = None
+
+
+# For a router's responses=: documents invalid requests as problems, in place
+# of the error format FastAPI would otherwise describe.
+INVALID_REQUEST = {422: {"model": Problem, "description": "The request is not valid."}}
 
 
 def problem(
@@ -53,7 +70,6 @@ async def _invalid_request(request: Request, exc: RequestValidationError) -> JSO
 
 
 async def _unexpected_error(request: Request, exc: Exception) -> JSONResponse:
-    # The traceback goes to the log, not to the caller.
     logger.exception("unhandled error on %s %s", request.method, request.url.path)
     return problem(500)
 

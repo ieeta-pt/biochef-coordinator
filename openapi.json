@@ -1,6 +1,201 @@
 {
   "components": {
     "schemas": {
+      "ActiveTask": {
+        "description": "A task the agent holds. Listing its lease renews it",
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "lease_id": {
+            "title": "Lease Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "barrier_1",
+              "held",
+              "failed",
+              "canceled"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "attempt",
+          "lease_id",
+          "state"
+        ],
+        "title": "ActiveTask",
+        "type": "object"
+      },
+      "AddWorkflow": {
+        "description": "POST /studies/{id}/workflows",
+        "properties": {
+          "study_version": {
+            "title": "Study Version",
+            "type": "integer"
+          },
+          "workflow": {
+            "$ref": "#/components/schemas/Workflow"
+          }
+        },
+        "required": [
+          "study_version",
+          "workflow"
+        ],
+        "title": "AddWorkflow",
+        "type": "object"
+      },
+      "AgentInfo": {
+        "description": "What the agent reports about itself in every poll",
+        "properties": {
+          "profile": {
+            "description": "For example \"tre\".",
+            "title": "Profile",
+            "type": "string"
+          },
+          "runner": {
+            "description": "For example \"apptainer\".",
+            "title": "Runner",
+            "type": "string"
+          },
+          "signing_mode": {
+            "description": "For example \"strict\".",
+            "title": "Signing Mode",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "alive",
+              "running",
+              "waiting",
+              "error"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "profile",
+          "runner",
+          "signing_mode",
+          "state"
+        ],
+        "title": "AgentInfo",
+        "type": "object"
+      },
+      "Approval": {
+        "additionalProperties": false,
+        "description": "POST /approvals: a decision on a study or workflow version, as the node sends it",
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/VersionDecision"
+          },
+          "decision_id": {
+            "description": "The node's id for the decision, unique only within the node. With the calling node it names the decision, so sending it again is harmless.",
+            "title": "Decision Id",
+            "type": "integer"
+          },
+          "signature": {
+            "description": "The node's signature over the RFC 8785 form of decision.",
+            "pattern": "^[A-Za-z0-9_-]{86}$",
+            "title": "Signature",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision_id",
+          "decision",
+          "signature"
+        ],
+        "title": "Approval",
+        "type": "object"
+      },
+      "Capacity": {
+        "properties": {
+          "accepting": {
+            "title": "Accepting",
+            "type": "boolean"
+          },
+          "slots_free": {
+            "title": "Slots Free",
+            "type": "integer"
+          },
+          "slots_total": {
+            "title": "Slots Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "slots_total",
+          "slots_free",
+          "accepting"
+        ],
+        "title": "Capacity",
+        "type": "object"
+      },
+      "ControlMessage": {
+        "description": "An instruction for the agent: stop this attempt of a task",
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "cancel",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "task_id",
+          "attempt"
+        ],
+        "title": "ControlMessage",
+        "type": "object"
+      },
+      "EncryptedPayload": {
+        "additionalProperties": false,
+        "description": "The task's payload, encrypted for the node with age.\n\nDecrypted, it is a JSON object: workflow, the workflow to run, whose digest must be\nworkflow_digest, and visas, the member's GA4GH visas as JWTs.",
+        "properties": {
+          "ciphertext": {
+            "description": "The age ciphertext, in its binary form, in base64.",
+            "title": "Ciphertext",
+            "type": "string"
+          },
+          "enc": {
+            "const": "age-x25519",
+            "title": "Enc",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enc",
+          "ciphertext"
+        ],
+        "title": "EncryptedPayload",
+        "type": "object"
+      },
       "Health": {
         "properties": {
           "database": {
@@ -20,16 +215,2779 @@
         ],
         "title": "Health",
         "type": "object"
+      },
+      "JobRequest": {
+        "additionalProperties": false,
+        "description": "What the member signs, once per node, with ES256 over its RFC 8785 form",
+        "properties": {
+          "datasets": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Datasets",
+            "type": "array"
+          },
+          "member": {
+            "title": "Member",
+            "type": "string"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "not_after": {
+            "format": "date-time",
+            "title": "Not After",
+            "type": "string"
+          },
+          "payload_digest": {
+            "description": "The SHA-256 of the decrypted payload.",
+            "title": "Payload Digest",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "study_digest": {
+            "title": "Study Digest",
+            "type": "string"
+          },
+          "study_id": {
+            "title": "Study Id",
+            "type": "string"
+          },
+          "study_version": {
+            "title": "Study Version",
+            "type": "integer"
+          },
+          "workflow_digest": {
+            "title": "Workflow Digest",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "study_id",
+          "study_version",
+          "study_digest",
+          "workflow_digest",
+          "member",
+          "node",
+          "datasets",
+          "not_after",
+          "payload_digest"
+        ],
+        "title": "JobRequest",
+        "type": "object"
+      },
+      "JobState": {
+        "description": "GET /jobs/{id}, and each server-sent event",
+        "properties": {
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "running",
+              "complete",
+              "incomplete",
+              "canceled"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "study_id": {
+            "title": "Study Id",
+            "type": "string"
+          },
+          "study_version": {
+            "title": "Study Version",
+            "type": "integer"
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          },
+          "submitted_by": {
+            "title": "Submitted By",
+            "type": "string"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskState"
+            },
+            "title": "Tasks",
+            "type": "array"
+          },
+          "workflow_digest": {
+            "title": "Workflow Digest",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "request_id",
+          "study_id",
+          "study_version",
+          "workflow_digest",
+          "submitted_by",
+          "submitted_at",
+          "state",
+          "tasks"
+        ],
+        "title": "JobState",
+        "type": "object"
+      },
+      "JobSubmission": {
+        "description": "POST /studies/{id}/jobs: one signed request and payload per node",
+        "properties": {
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/SignedJobRequest"
+            },
+            "minItems": 1,
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "request_id",
+          "tasks"
+        ],
+        "title": "JobSubmission",
+        "type": "object"
+      },
+      "KeyRegistration": {
+        "additionalProperties": false,
+        "description": "PUT /me/keys.\n\nThe nonce of binding_token is the hash of these keys exactly as sent (biochef-infra\ndocs/identity.md), so keys in any other form are refused, never normalised: a\nnormalised key would hash to something the member never signed in for.",
+        "properties": {
+          "binding_token": {
+            "description": "LS Login ID token whose nonce is the hash of both keys.",
+            "title": "Binding Token",
+            "type": "string"
+          },
+          "result_key": {
+            "description": "The age public key that partials are encrypted for.",
+            "pattern": "^age1[02-9ac-hj-np-z]{58}$",
+            "title": "Result Key",
+            "type": "string"
+          },
+          "signing_key": {
+            "$ref": "#/components/schemas/SigningKey"
+          }
+        },
+        "required": [
+          "signing_key",
+          "result_key",
+          "binding_token"
+        ],
+        "title": "KeyRegistration",
+        "type": "object"
+      },
+      "Lease": {
+        "description": "An attempt's hold on its task. An attempt has one lease at a time, so the routes\nunder /tasks/{task_id}/attempts/{attempt} name it by task and attempt.",
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "lease_id": {
+            "title": "Lease Id",
+            "type": "string"
+          },
+          "valid": {
+            "description": "False when the coordinator re-queued or canceled the attempt.",
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lease_id",
+          "expires_at",
+          "valid"
+        ],
+        "title": "Lease",
+        "type": "object"
+      },
+      "LsLoginKey": {
+        "description": "A key LS Login signs ID tokens with, now or in the past",
+        "properties": {
+          "jwk": {
+            "additionalProperties": true,
+            "description": "The public key as LS Login published it, with kid.",
+            "title": "Jwk",
+            "type": "object"
+          },
+          "published_from": {
+            "description": "When LS Login started publishing it.",
+            "format": "date-time",
+            "title": "Published From",
+            "type": "string"
+          },
+          "published_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When LS Login stopped publishing it. Absent while it still does.",
+            "title": "Published Until"
+          }
+        },
+        "required": [
+          "jwk",
+          "published_from"
+        ],
+        "title": "LsLoginKey",
+        "type": "object"
+      },
+      "Member": {
+        "additionalProperties": false,
+        "description": "A researcher as listed in a study version",
+        "properties": {
+          "binding_token": {
+            "title": "Binding Token",
+            "type": "string"
+          },
+          "ls_aai_id": {
+            "title": "Ls Aai Id",
+            "type": "string"
+          },
+          "member": {
+            "description": "The member's id in the study, an opaque value such as m-02. Never shown as a name.",
+            "title": "Member",
+            "type": "string"
+          },
+          "result_key": {
+            "pattern": "^age1[02-9ac-hj-np-z]{58}$",
+            "title": "Result Key",
+            "type": "string"
+          },
+          "signing_key": {
+            "$ref": "#/components/schemas/SigningKey"
+          }
+        },
+        "required": [
+          "member",
+          "ls_aai_id",
+          "signing_key",
+          "result_key",
+          "binding_token"
+        ],
+        "title": "Member",
+        "type": "object"
+      },
+      "NodeApproval": {
+        "description": "Where one node stands on a study version or a workflow.\n\nA node approves one version of a study at a time. Approving a newer version makes\nthe one it replaces superseded, with that version's workflows, and so does any\nolder version still pending there: it can no longer be approved. A node signs no\ndecision for a version it only skipped.",
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "decision": {
+            "enum": [
+              "pending",
+              "approved",
+              "refused",
+              "withdrawn",
+              "superseded"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node",
+          "decision"
+        ],
+        "title": "NodeApproval",
+        "type": "object"
+      },
+      "OutputRules": {
+        "additionalProperties": false,
+        "properties": {
+          "aggregates_only": {
+            "title": "Aggregates Only",
+            "type": "boolean"
+          },
+          "max_bytes": {
+            "title": "Max Bytes",
+            "type": "integer"
+          },
+          "min_count": {
+            "title": "Min Count",
+            "type": "integer"
+          },
+          "types": {
+            "description": "File name suffixes allowed to leave, compared exactly with what follows the last dot, such as tsv.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Types",
+            "type": "array"
+          }
+        },
+        "required": [
+          "aggregates_only",
+          "min_count",
+          "types",
+          "max_bytes"
+        ],
+        "title": "OutputRules",
+        "type": "object"
+      },
+      "Partial": {
+        "description": "One node's result for a job, encrypted for the study's result recipients",
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "ciphertext": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The age ciphertext, in its binary form, in base64. Its SHA-256 is ciphertext_digest. None when withheld.",
+            "title": "Ciphertext"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "signature": {
+            "description": "The node's signature over the RFC 8785 form of statement.",
+            "pattern": "^[A-Za-z0-9_-]{86}$",
+            "title": "Signature",
+            "type": "string"
+          },
+          "statement": {
+            "$ref": "#/components/schemas/Statement"
+          }
+        },
+        "required": [
+          "node",
+          "attempt",
+          "statement",
+          "signature"
+        ],
+        "title": "Partial",
+        "type": "object"
+      },
+      "PartialCommit": {
+        "additionalProperties": false,
+        "description": "The node's outer statement on a partial, signed with the node key",
+        "properties": {
+          "signature": {
+            "description": "The node's signature over the RFC 8785 form of statement.",
+            "pattern": "^[A-Za-z0-9_-]{86}$",
+            "title": "Signature",
+            "type": "string"
+          },
+          "statement": {
+            "$ref": "#/components/schemas/Statement"
+          }
+        },
+        "required": [
+          "statement",
+          "signature"
+        ],
+        "title": "PartialCommit",
+        "type": "object"
+      },
+      "PartialPredicate": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "ciphertext_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The SHA-256 of the age ciphertext in its binary form, as uploaded. Only when released.",
+            "title": "Ciphertext Digest"
+          },
+          "ciphertext_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The length in bytes of the age ciphertext in its binary form.",
+            "title": "Ciphertext Size"
+          },
+          "decision": {
+            "description": "Whether the result left the node. Inside the predicate, so the node's signature covers it and nobody passing the partial on can relabel it.",
+            "enum": [
+              "released",
+              "withheld"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "recipient_keys": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The result keys the partial is encrypted for: the submitter's, or every member's (result_recipients).",
+            "title": "Recipient Keys"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "study_digest": {
+            "title": "Study Digest",
+            "type": "string"
+          },
+          "study_id": {
+            "title": "Study Id",
+            "type": "string"
+          },
+          "study_version": {
+            "title": "Study Version",
+            "type": "integer"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "workflow_digest": {
+            "title": "Workflow Digest",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "task_id",
+          "attempt",
+          "study_id",
+          "study_version",
+          "study_digest",
+          "workflow_digest",
+          "node",
+          "decision"
+        ],
+        "title": "PartialPredicate",
+        "type": "object"
+      },
+      "PendingApproval": {
+        "description": "A study version or a workflow waiting for this node's data manager.\n\nOnce the node approves a version of a study, older versions it never decided\nleave its list: the agent marks them superseded and sends no decision for them.",
+        "properties": {
+          "digest": {
+            "description": "The study version's digest, or the workflow's.",
+            "title": "Digest",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "study",
+              "workflow"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "study_id": {
+            "title": "Study Id",
+            "type": "string"
+          },
+          "version": {
+            "description": "The study version.",
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "study_id",
+          "version",
+          "digest"
+        ],
+        "title": "PendingApproval",
+        "type": "object"
+      },
+      "PollRequest": {
+        "description": "POST /poll: the agent's heartbeat",
+        "properties": {
+          "active": {
+            "items": {
+              "$ref": "#/components/schemas/ActiveTask"
+            },
+            "title": "Active",
+            "type": "array"
+          },
+          "agent": {
+            "$ref": "#/components/schemas/AgentInfo"
+          },
+          "api_version": {
+            "title": "Api Version",
+            "type": "string"
+          },
+          "capacity": {
+            "$ref": "#/components/schemas/Capacity"
+          },
+          "site_list_version": {
+            "title": "Site List Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "api_version",
+          "agent",
+          "site_list_version",
+          "capacity"
+        ],
+        "title": "PollRequest",
+        "type": "object"
+      },
+      "PollResponse": {
+        "properties": {
+          "control": {
+            "items": {
+              "$ref": "#/components/schemas/ControlMessage"
+            },
+            "title": "Control",
+            "type": "array"
+          },
+          "leases": {
+            "items": {
+              "$ref": "#/components/schemas/Lease"
+            },
+            "title": "Leases",
+            "type": "array"
+          },
+          "next_poll_after_s": {
+            "description": "Seconds to wait before the next poll; 30 unless the coordinator is slowing agents down. A lease lasts three of these intervals, so an agent that polls less often than this loses its tasks.",
+            "title": "Next Poll After S",
+            "type": "integer"
+          },
+          "pending_approvals": {
+            "items": {
+              "$ref": "#/components/schemas/PendingApproval"
+            },
+            "title": "Pending Approvals",
+            "type": "array"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "site_list_version": {
+            "description": "The version of the site list the coordinator serves. When it is newer than the agent's, the agent fetches GET /site-list.",
+            "title": "Site List Version",
+            "type": "integer"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskEnvelope"
+            },
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "server_time",
+          "site_list_version",
+          "next_poll_after_s",
+          "leases",
+          "tasks",
+          "pending_approvals",
+          "control"
+        ],
+        "title": "PollResponse",
+        "type": "object"
+      },
+      "Problem": {
+        "additionalProperties": true,
+        "description": "An error, as RFC 9457 problem details. Invalid requests add an errors list.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "status": {
+            "title": "Status",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "default": "about:blank",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "status"
+        ],
+        "title": "Problem",
+        "type": "object"
+      },
+      "RequestRefusal": {
+        "additionalProperties": false,
+        "description": "The agent's own refusal of a request, signed like any decision of the node",
+        "properties": {
+          "action": {
+            "const": "refuse",
+            "title": "Action",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the data manager wrote, if anything.",
+            "title": "Comment"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "bad_signature",
+              "wrong_node",
+              "study_not_approved",
+              "workflow_not_approved",
+              "dataset_not_in_study",
+              "expired",
+              "replay",
+              "cannot_decrypt",
+              "hash_mismatch",
+              "visa_missing",
+              "dataset_not_bound"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "schema": {
+            "const": "biochef.node-decision.v1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "subject_hash": {
+            "description": "Always null: a request has no digest here.",
+            "title": "Subject Hash",
+            "type": "null"
+          },
+          "subject_id": {
+            "description": "The node's own id for the subject: its row id for a study or workflow version, the request_id for a request.",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_type": {
+            "const": "request",
+            "title": "Subject Type",
+            "type": "string"
+          },
+          "user": {
+            "description": "Who decided, as the TRE's login names them; \"agent\" when the agent did.",
+            "title": "User",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema",
+          "node",
+          "subject_id",
+          "subject_hash",
+          "user",
+          "comment",
+          "at",
+          "subject_type",
+          "action",
+          "reason"
+        ],
+        "title": "RequestRefusal",
+        "type": "object"
+      },
+      "Signature": {
+        "additionalProperties": false,
+        "description": "The member's signature on job_request",
+        "properties": {
+          "alg": {
+            "const": "ES256",
+            "title": "Alg",
+            "type": "string"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Informative only: the node checks the signature with the signing key the study version lists for member.",
+            "title": "Key"
+          },
+          "sig": {
+            "description": "r and s, 32 bytes each, in base64url without padding.",
+            "pattern": "^[A-Za-z0-9_-]{86}$",
+            "title": "Sig",
+            "type": "string"
+          }
+        },
+        "required": [
+          "alg",
+          "sig"
+        ],
+        "title": "Signature",
+        "type": "object"
+      },
+      "SignedJobRequest": {
+        "properties": {
+          "job_request": {
+            "$ref": "#/components/schemas/JobRequest"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/EncryptedPayload"
+          },
+          "signature": {
+            "$ref": "#/components/schemas/Signature"
+          }
+        },
+        "required": [
+          "job_request",
+          "signature",
+          "payload"
+        ],
+        "title": "SignedJobRequest",
+        "type": "object"
+      },
+      "SigningKey": {
+        "additionalProperties": false,
+        "description": "A member's public signing key, as a P-256 JWK with exactly crv, kty, x and y.",
+        "properties": {
+          "crv": {
+            "const": "P-256",
+            "title": "Crv",
+            "type": "string"
+          },
+          "kty": {
+            "const": "EC",
+            "title": "Kty",
+            "type": "string"
+          },
+          "x": {
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "title": "X",
+            "type": "string"
+          },
+          "y": {
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "title": "Y",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kty",
+          "crv",
+          "x",
+          "y"
+        ],
+        "title": "SigningKey",
+        "type": "object"
+      },
+      "SiteList": {
+        "description": "The federation's site list. The coordinator serves it byte for byte, as it was signed",
+        "properties": {
+          "expires_at": {
+            "description": "ISO 8601, with its zone.",
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "ls_login_keys": {
+            "description": "The history of LS Login's signing keys. A node checks each member's binding_token against it, so the token can still be checked after LS Login rotates its keys.",
+            "items": {
+              "$ref": "#/components/schemas/LsLoginKey"
+            },
+            "title": "Ls Login Keys",
+            "type": "array"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/SiteListNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "version": {
+            "description": "Increases with every new list.",
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "expires_at",
+          "nodes",
+          "ls_login_keys"
+        ],
+        "title": "SiteList",
+        "type": "object"
+      },
+      "SiteListNode": {
+        "description": "One node on the site list, with its keys",
+        "properties": {
+          "certificate": {
+            "description": "sha256: and the SHA-256, in lowercase hex, of the node's client certificate in DER.",
+            "title": "Certificate",
+            "type": "string"
+          },
+          "encryption_key": {
+            "description": "The age X25519 recipient, in lowercase, that job payloads are encrypted for. Studies name it by its fingerprint.",
+            "title": "Encryption Key",
+            "type": "string"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "signing_key": {
+            "description": "The Ed25519 public key that checks the node's decisions and partials, as base64 of its DER SubjectPublicKeyInfo: the body of its PEM file.",
+            "title": "Signing Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node",
+          "encryption_key",
+          "signing_key",
+          "certificate"
+        ],
+        "title": "SiteListNode",
+        "type": "object"
+      },
+      "SiteStatus": {
+        "description": "A node's status, derived from its polls",
+        "properties": {
+          "last_poll_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Poll At"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "queue_length": {
+            "title": "Queue Length",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "online",
+              "degraded",
+              "offline"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node",
+          "status",
+          "last_poll_at",
+          "queue_length"
+        ],
+        "title": "SiteStatus",
+        "type": "object"
+      },
+      "Statement": {
+        "additionalProperties": false,
+        "description": "A node's outer statement on a partial, as an in-toto Statement.\n\nReleased, it names the files that left and the ciphertext that holds them. Withheld,\nit names neither.",
+        "properties": {
+          "_type": {
+            "const": "https://in-toto.io/Statement/v1",
+            "title": "Type",
+            "type": "string"
+          },
+          "predicate": {
+            "$ref": "#/components/schemas/PartialPredicate"
+          },
+          "predicateType": {
+            "const": "https://biochef.app/partial/v1",
+            "title": "Predicatetype",
+            "type": "string"
+          },
+          "subject": {
+            "description": "The files in the partial, each with the SHA-256 of its contents. Empty when the result was withheld.",
+            "items": {
+              "$ref": "#/components/schemas/StatementSubject"
+            },
+            "title": "Subject",
+            "type": "array"
+          }
+        },
+        "required": [
+          "_type",
+          "subject",
+          "predicateType",
+          "predicate"
+        ],
+        "title": "Statement",
+        "type": "object"
+      },
+      "StatementSubject": {
+        "additionalProperties": false,
+        "properties": {
+          "digest": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Digest",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "digest"
+        ],
+        "title": "StatementSubject",
+        "type": "object"
+      },
+      "Study": {
+        "description": "GET /studies/{id}: the versions and each node's approval",
+        "properties": {
+          "study_id": {
+            "title": "Study Id",
+            "type": "string"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/StudyVersionStatus"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "study_id",
+          "versions"
+        ],
+        "title": "Study",
+        "type": "object"
+      },
+      "StudyNode": {
+        "additionalProperties": false,
+        "properties": {
+          "datasets": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Datasets",
+            "type": "array"
+          },
+          "encryption_key": {
+            "description": "Fingerprint of the node's encryption key, the age recipient on the site list.",
+            "title": "Encryption Key",
+            "type": "string"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node",
+          "encryption_key",
+          "datasets"
+        ],
+        "title": "StudyNode",
+        "type": "object"
+      },
+      "StudyVersion": {
+        "additionalProperties": false,
+        "description": "One version of a study, signed by its proposer.\n\nEach node approves its digest: the SHA-256 of its RFC 8785 form without signature.",
+        "properties": {
+          "goal": {
+            "title": "Goal",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/Member"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/StudyNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "output_rules": {
+            "$ref": "#/components/schemas/OutputRules"
+          },
+          "previous_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Digest"
+          },
+          "proposer": {
+            "title": "Proposer",
+            "type": "string"
+          },
+          "result_recipients": {
+            "description": "Who can read the results: the member who submitted the job, or every member. The nodes approve it with the rest of the version, and each partial is encrypted for these members' result keys.",
+            "enum": [
+              "submitter",
+              "all_members"
+            ],
+            "title": "Result Recipients",
+            "type": "string"
+          },
+          "signature": {
+            "title": "Signature",
+            "type": "string"
+          },
+          "study_id": {
+            "title": "Study Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "study_id",
+          "version",
+          "goal",
+          "members",
+          "nodes",
+          "output_rules",
+          "result_recipients",
+          "proposer",
+          "signature"
+        ],
+        "title": "StudyVersion",
+        "type": "object"
+      },
+      "StudyVersionStatus": {
+        "properties": {
+          "approvals": {
+            "items": {
+              "$ref": "#/components/schemas/NodeApproval"
+            },
+            "title": "Approvals",
+            "type": "array"
+          },
+          "digest": {
+            "title": "Digest",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "digest",
+          "approvals"
+        ],
+        "title": "StudyVersionStatus",
+        "type": "object"
+      },
+      "TaskDecision": {
+        "description": "The agent's verdict on a delivered task, after its checks",
+        "properties": {
+          "refusal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskRefusal"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only when refused, and then required: the node's signed refusal, so the member sees why and the coordinator cannot make one up."
+          },
+          "verdict": {
+            "enum": [
+              "accepted",
+              "refused"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict"
+        ],
+        "title": "TaskDecision",
+        "type": "object"
+      },
+      "TaskEnvelope": {
+        "description": "A task as the coordinator delivers it, which adds task_id, attempt and lease_id, unsigned",
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "job_request": {
+            "$ref": "#/components/schemas/JobRequest"
+          },
+          "lease_id": {
+            "title": "Lease Id",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/EncryptedPayload"
+          },
+          "signature": {
+            "$ref": "#/components/schemas/Signature"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "attempt",
+          "lease_id",
+          "job_request",
+          "signature",
+          "payload"
+        ],
+        "title": "TaskEnvelope",
+        "type": "object"
+      },
+      "TaskEvent": {
+        "description": "A state change, reported at once instead of on the next poll",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "tool_unavailable",
+                  "tool_verification_failed",
+                  "executor_error",
+                  "system_error"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only when failed, and then required. Never free text.",
+            "title": "Reason"
+          },
+          "seq": {
+            "description": "Increases within each attempt, to drop duplicates and spot gaps.",
+            "title": "Seq",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "barrier_1",
+              "held",
+              "failed",
+              "canceled"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "at",
+          "state"
+        ],
+        "title": "TaskEvent",
+        "type": "object"
+      },
+      "TaskRefusal": {
+        "additionalProperties": false,
+        "description": "A refusal as the node sends it. Its subject_id is the task's request_id",
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/RequestRefusal"
+          },
+          "decision_id": {
+            "description": "The node's id for the decision, unique only within the node.",
+            "title": "Decision Id",
+            "type": "integer"
+          },
+          "signature": {
+            "description": "The node's signature over the RFC 8785 form of decision.",
+            "pattern": "^[A-Za-z0-9_-]{86}$",
+            "title": "Signature",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision_id",
+          "decision",
+          "signature"
+        ],
+        "title": "TaskRefusal",
+        "type": "object"
+      },
+      "TaskState": {
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "leased",
+              "refused",
+              "running",
+              "barrier_1",
+              "partial_delivered",
+              "withheld",
+              "failed",
+              "canceled"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node",
+          "state",
+          "attempt"
+        ],
+        "title": "TaskState",
+        "type": "object"
+      },
+      "ToolData": {
+        "additionalProperties": false,
+        "properties": {
+          "paramValues": {
+            "additionalProperties": true,
+            "title": "Paramvalues",
+            "type": "object"
+          },
+          "repo": {
+            "description": "The tool, pinned by digest.",
+            "title": "Repo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "repo",
+          "paramValues"
+        ],
+        "title": "ToolData",
+        "type": "object"
+      },
+      "VersionDecision": {
+        "additionalProperties": false,
+        "description": "A data manager's approval, refusal or withdrawal of a study or workflow version",
+        "properties": {
+          "action": {
+            "enum": [
+              "approve",
+              "refuse",
+              "withdraw"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the data manager wrote, if anything.",
+            "title": "Comment"
+          },
+          "dac_confirmed": {
+            "anyOf": [
+              {
+                "const": true,
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only on approving a study version, and then required: the data access committee has granted access.",
+            "title": "Dac Confirmed"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "const": "superseded",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "superseded when approving a newer version of the study withdrew this one.",
+            "title": "Reason"
+          },
+          "schema": {
+            "const": "biochef.node-decision.v1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "subject_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The digest of the study version or the workflow.",
+            "title": "Subject Hash"
+          },
+          "subject_id": {
+            "description": "The node's own id for the subject: its row id for a study or workflow version, the request_id for a request.",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_type": {
+            "enum": [
+              "study_version",
+              "workflow_version"
+            ],
+            "title": "Subject Type",
+            "type": "string"
+          },
+          "user": {
+            "description": "Who decided, as the TRE's login names them; \"agent\" when the agent did.",
+            "title": "User",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema",
+          "node",
+          "subject_id",
+          "subject_hash",
+          "user",
+          "comment",
+          "at",
+          "subject_type",
+          "action",
+          "reason"
+        ],
+        "title": "VersionDecision",
+        "type": "object"
+      },
+      "Workflow": {
+        "additionalProperties": false,
+        "description": "A BioChef workflow, exactly as the member signs it.\n\nIts digest identifies it: the SHA-256 of its RFC 8785 form.",
+        "properties": {
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowEdge"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "nodes",
+          "edges"
+        ],
+        "title": "Workflow",
+        "type": "object"
+      },
+      "WorkflowEdge": {
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "sourceHandle": {
+            "title": "Sourcehandle",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          },
+          "targetHandle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targethandle"
+          }
+        },
+        "required": [
+          "source",
+          "sourceHandle",
+          "target"
+        ],
+        "title": "WorkflowEdge",
+        "type": "object"
+      },
+      "WorkflowNode": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolData"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only on tool nodes (workflowNode)."
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "workflowNode",
+              "inputWorkflowNode",
+              "outputWorkflowNode"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type"
+        ],
+        "title": "WorkflowNode",
+        "type": "object"
+      },
+      "WorkflowStatus": {
+        "description": "A workflow of a study and each node's approval",
+        "properties": {
+          "approvals": {
+            "items": {
+              "$ref": "#/components/schemas/NodeApproval"
+            },
+            "title": "Approvals",
+            "type": "array"
+          },
+          "digest": {
+            "title": "Digest",
+            "type": "string"
+          },
+          "study_version": {
+            "title": "Study Version",
+            "type": "integer"
+          },
+          "withdrawn": {
+            "title": "Withdrawn",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "digest",
+          "study_version",
+          "withdrawn",
+          "approvals"
+        ],
+        "title": "WorkflowStatus",
+        "type": "object"
       }
     }
   },
   "info": {
     "summary": "Studies, per-node approvals and jobs that BioChef agents fetch by polling.",
-    "title": "BioChef Coordination Hub",
+    "title": "BioChef Coordinator",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/agent/v1/approvals": {
+      "post": {
+        "description": "The coordinator knows a decision by the calling node and its decision_id. The agent\nsends a decision again when it cannot tell whether it arrived: one already held\ngets the same answer and is not stored twice. A different decision under a\ndecision_id already held is refused, and the one held stays. The signature is\nchecked against the calling node's signing key on the site list, and decision.node\nmust be that node.",
+        "operationId": "post_approval_api_agent_v1_approvals_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Approval"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "This node already sent a different decision under this decision_id."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "A data manager's signed approval, refusal or withdrawal",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/api/agent/v1/poll": {
+      "post": {
+        "operationId": "poll_api_agent_v1_poll_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PollRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PollResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Heartbeat: states and capacity go up; tasks, approvals and control messages come down",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/api/agent/v1/site-list": {
+      "get": {
+        "operationId": "get_site_list_api_agent_v1_site_list_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteList"
+                }
+              }
+            },
+            "description": "The site list, byte for byte as the federation signed it.",
+            "headers": {
+              "BioChef-Signature": {
+                "description": "Ed25519 signature over the body, base64url.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "The current signed site list",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/api/agent/v1/studies/{study_id}/versions/{version}": {
+      "get": {
+        "description": "Only for the nodes the version names.",
+        "operationId": "get_study_version_api_agent_v1_studies__study_id__versions__version__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "study_id",
+            "required": true,
+            "schema": {
+              "title": "Study Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudyVersion"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not pending at the calling node, nor approved by it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "A study version waiting for this node's approval",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/api/agent/v1/tasks/{task_id}/attempts/{attempt}/commit": {
+      "post": {
+        "description": "The coordinator makes the partial available to the study's result recipients.\nA released partial is committed after its upload, which must hash to the\nstatement's ciphertext_digest. A repeated commit returns the stored one. A result\nwithheld at barrier 1 is committed as withheld, with no upload, no subject and no\nciphertext digest, so the job can finish.",
+        "operationId": "commit_partial_api_agent_v1_tasks__task_id__attempts__attempt__commit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attempt",
+            "required": true,
+            "schema": {
+              "title": "Attempt",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartialCommit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartialCommit"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not a task of the calling node, not its current attempt, or the attempt's lease is no longer valid. An attempt has one lease at a time, so the path names it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Released, but nothing was uploaded, or the upload is not the ciphertext_digest and ciphertext_size the statement names."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Commit the partial with the node's signed statement",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/api/agent/v1/tasks/{task_id}/attempts/{attempt}/decision": {
+      "post": {
+        "description": "A refusal is final for that request at that node: the same request delivered again\ngets the same refusal. The same verdict sent again changes nothing.",
+        "operationId": "post_task_decision_api_agent_v1_tasks__task_id__attempts__attempt__decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attempt",
+            "required": true,
+            "schema": {
+              "title": "Attempt",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskDecision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not a task of the calling node, not its current attempt, or the attempt's lease is no longer valid. An attempt has one lease at a time, so the path names it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "This attempt already has a different verdict, or this node already sent a different decision under the refusal's decision_id."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Accept or refuse a delivered task after the local checks",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/api/agent/v1/tasks/{task_id}/attempts/{attempt}/events": {
+      "post": {
+        "description": "The same state also arrives in the next poll, so a lost event only costs delay.",
+        "operationId": "post_task_event_api_agent_v1_tasks__task_id__attempts__attempt__events_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attempt",
+            "required": true,
+            "schema": {
+              "title": "Attempt",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskEvent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not a task of the calling node, not its current attempt, or the attempt's lease is no longer valid. An attempt has one lease at a time, so the path names it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Report a state change at once instead of on the next poll",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/api/agent/v1/tasks/{task_id}/attempts/{attempt}/partial": {
+      "put": {
+        "description": "The age ciphertext in its binary form. The coordinator checks the lease and\nContent-Digest. Uploading the same bytes again changes nothing.",
+        "operationId": "put_partial_api_agent_v1_tasks__task_id__attempts__attempt__partial_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attempt",
+            "required": true,
+            "schema": {
+              "title": "Attempt",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "sha-256=:<base64 of the body's SHA-256>: (RFC 9530)",
+            "in": "header",
+            "name": "Content-Digest",
+            "required": true,
+            "schema": {
+              "description": "sha-256=:<base64 of the body's SHA-256>: (RFC 9530)",
+              "title": "Content-Digest",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not a task of the calling node, not its current attempt, or the attempt's lease is no longer valid. An attempt has one lease at a time, so the path names it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Different bytes were already uploaded."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Upload the encrypted partial",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/api/agent/v1/workflows/{digest}": {
+      "get": {
+        "description": "Only for the nodes of a study version the workflow was added to.",
+        "operationId": "get_workflow_api_agent_v1_workflows__digest__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "digest",
+            "required": true,
+            "schema": {
+              "title": "Digest",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Workflow"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not pending at the calling node, nor approved by it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "A workflow waiting for this node's approval",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}": {
+      "get": {
+        "operationId": "get_job_api_v1_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "The job's state and each task's state",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}/cancel": {
+      "post": {
+        "operationId": "cancel_job_api_v1_jobs__job_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Cancel the job; running tasks stop on their next poll",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}/events": {
+      "get": {
+        "operationId": "job_events_api_v1_jobs__job_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "itemSchema": {
+                  "properties": {
+                    "data": {
+                      "contentMediaType": "application/json",
+                      "contentSchema": {
+                        "$ref": "#/components/schemas/JobState"
+                      },
+                      "type": "string"
+                    },
+                    "event": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "retry": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Live progress of the job, as server-sent events",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}/partials": {
+      "get": {
+        "description": "Only for the result recipients the approved study version names: the member who\nsubmitted the job, or every member when result_recipients is all_members.",
+        "operationId": "list_partials_api_v1_jobs__job_id__partials_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Partial"
+                  },
+                  "title": "Response List Partials Api V1 Jobs  Job Id  Partials Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "The encrypted partials, for the study's result recipients",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/me/keys": {
+      "put": {
+        "operationId": "register_keys_api_v1_me_keys_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyRegistration"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Member"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Register the caller's signing key and result key",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/sites": {
+      "get": {
+        "operationId": "list_sites_api_v1_sites_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SiteStatus"
+                  },
+                  "title": "Response List Sites Api V1 Sites Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Each node's status",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/studies": {
+      "post": {
+        "operationId": "propose_study_api_v1_studies_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudyVersion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudyVersionStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Propose a study",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/studies/{study_id}": {
+      "get": {
+        "operationId": "get_study_api_v1_studies__study_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "study_id",
+            "required": true,
+            "schema": {
+              "title": "Study Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Study"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "A study's versions and each node's approval",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/studies/{study_id}/jobs": {
+      "post": {
+        "operationId": "submit_job_api_v1_studies__study_id__jobs_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "study_id",
+            "required": true,
+            "schema": {
+              "title": "Study Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobSubmission"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Submit a job",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/studies/{study_id}/versions": {
+      "post": {
+        "operationId": "propose_study_version_api_v1_studies__study_id__versions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "study_id",
+            "required": true,
+            "schema": {
+              "title": "Study Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudyVersion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudyVersionStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Propose a new version of a study; the nodes approve it again",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/studies/{study_id}/workflows": {
+      "get": {
+        "operationId": "list_workflows_api_v1_studies__study_id__workflows_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "study_id",
+            "required": true,
+            "schema": {
+              "title": "Study Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WorkflowStatus"
+                  },
+                  "title": "Response List Workflows Api V1 Studies  Study Id  Workflows Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "A study's workflows and their approvals",
+        "tags": [
+          "researcher"
+        ]
+      },
+      "post": {
+        "operationId": "add_workflow_api_v1_studies__study_id__workflows_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "study_id",
+            "required": true,
+            "schema": {
+              "title": "Study Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddWorkflow"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Add a workflow to an approved study version",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
+    "/api/v1/studies/{study_id}/workflows/{digest}/withdraw": {
+      "post": {
+        "operationId": "withdraw_workflow_api_v1_studies__study_id__workflows__digest__withdraw_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "study_id",
+            "required": true,
+            "schema": {
+              "title": "Study Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "digest",
+            "required": true,
+            "schema": {
+              "title": "Digest",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request is not valid."
+          }
+        },
+        "summary": "Withdraw a workflow from new jobs",
+        "tags": [
+          "researcher"
+        ]
+      }
+    },
     "/healthz": {
       "get": {
         "operationId": "healthz_healthz_get",

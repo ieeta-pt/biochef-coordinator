@@ -1,6 +1,6 @@
 # biochef-coordinator
 
-The BioChef Coordination Hub. It stores studies, each node's approvals and jobs, which agents fetch by polling. It relays signed and encrypted documents, and reads no job payload or result.
+The BioChef Coordinator. It stores studies, each node's approvals and jobs, which agents fetch by polling. It relays signed and encrypted documents, and reads no job payload or result.
 
 The API is described in [openapi.json](openapi.json). Once the service is running, it is browsable at http://localhost:8000/docs.
 
@@ -28,6 +28,7 @@ uv run uvicorn coordinator.main:app --reload      # http://localhost:8000
 
 | Task | Command |
 |---|---|
+| Run the tests | `uv run pytest` |
 | Lint and format | `uv run ruff check --fix && uv run ruff format` |
 | Regenerate `openapi.json` after changing the API | `uv run python -m coordinator.openapi` |
 
