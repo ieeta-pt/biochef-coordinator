@@ -396,6 +396,7 @@
         "type": "object"
       },
       "Lease": {
+        "description": "An attempt's hold on its task. An attempt has one lease at a time, so the routes\nunder /tasks/{task_id}/attempts/{attempt} name it by task and attempt.",
         "properties": {
           "expires_at": {
             "format": "date-time",
@@ -579,16 +580,8 @@
                 "type": "null"
               }
             ],
-            "description": "The age ciphertext, in its binary form, in base64. None when withheld.",
+            "description": "The age ciphertext, in its binary form, in base64. Its SHA-256 is ciphertext_digest. None when withheld.",
             "title": "Ciphertext"
-          },
-          "decision": {
-            "enum": [
-              "released",
-              "withheld"
-            ],
-            "title": "Decision",
-            "type": "string"
           },
           "node": {
             "title": "Node",
@@ -607,7 +600,6 @@
         "required": [
           "node",
           "attempt",
-          "decision",
           "statement",
           "signature"
         ],
@@ -618,14 +610,6 @@
         "additionalProperties": false,
         "description": "The node's outer statement on a partial, signed with the node key",
         "properties": {
-          "decision": {
-            "enum": [
-              "released",
-              "withheld"
-            ],
-            "title": "Decision",
-            "type": "string"
-          },
           "signature": {
             "description": "The node's signature over the RFC 8785 form of statement.",
             "pattern": "^[A-Za-z0-9_-]{86}$",
@@ -637,7 +621,6 @@
           }
         },
         "required": [
-          "decision",
           "statement",
           "signature"
         ],
@@ -651,6 +634,18 @@
             "title": "Attempt",
             "type": "integer"
           },
+          "ciphertext_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The SHA-256 of the age ciphertext in its binary form, as uploaded. Only when released.",
+            "title": "Ciphertext Digest"
+          },
           "ciphertext_size": {
             "anyOf": [
               {
@@ -660,8 +655,17 @@
                 "type": "null"
               }
             ],
-            "description": "The length of ciphertext as the partial carries it, in base64.",
+            "description": "The length in bytes of the age ciphertext in its binary form.",
             "title": "Ciphertext Size"
+          },
+          "decision": {
+            "description": "Whether the result left the node. Inside the predicate, so the node's signature covers it and nobody passing the partial on can relabel it.",
+            "enum": [
+              "released",
+              "withheld"
+            ],
+            "title": "Decision",
+            "type": "string"
           },
           "node": {
             "title": "Node",
@@ -679,7 +683,7 @@
                 "type": "null"
               }
             ],
-            "description": "The result keys the partial is encrypted for: the submitter's, or every member's (result_recipients). Each is the SHA-256 of the age recipient string.",
+            "description": "The result keys the partial is encrypted for: the submitter's, or every member's (result_recipients).",
             "title": "Recipient Keys"
           },
           "request_id": {
@@ -715,7 +719,8 @@
           "study_version",
           "study_digest",
           "workflow_digest",
-          "node"
+          "node",
+          "decision"
         ],
         "title": "PartialPredicate",
         "type": "object"
@@ -822,6 +827,11 @@
             "title": "Server Time",
             "type": "string"
           },
+          "site_list_version": {
+            "description": "The version of the site list the coordinator serves. When it is newer than the agent's, the agent fetches GET /site-list.",
+            "title": "Site List Version",
+            "type": "integer"
+          },
           "tasks": {
             "items": {
               "$ref": "#/components/schemas/TaskEnvelope"
@@ -832,6 +842,7 @@
         },
         "required": [
           "server_time",
+          "site_list_version",
           "next_poll_after_s",
           "leases",
           "tasks",
@@ -1097,12 +1108,12 @@
         "description": "One node on the site list, with its keys",
         "properties": {
           "certificate": {
-            "description": "Fingerprint of the node's client certificate.",
+            "description": "sha256: and the SHA-256, in lowercase hex, of the node's client certificate in DER.",
             "title": "Certificate",
             "type": "string"
           },
           "encryption_key": {
-            "description": "The age public key job payloads are encrypted for.",
+            "description": "The age X25519 recipient, in lowercase, that job payloads are encrypted for. Studies name it by its fingerprint.",
             "title": "Encryption Key",
             "type": "string"
           },
@@ -1111,7 +1122,7 @@
             "type": "string"
           },
           "signing_key": {
-            "description": "The public key that checks the node's signatures.",
+            "description": "The Ed25519 public key that checks the node's decisions and partials, as base64 of its DER SubjectPublicKeyInfo: the body of its PEM file.",
             "title": "Signing Key",
             "type": "string"
           }
@@ -1169,7 +1180,7 @@
       },
       "Statement": {
         "additionalProperties": false,
-        "description": "A node's outer statement on a partial, as an in-toto Statement",
+        "description": "A node's outer statement on a partial, as an in-toto Statement.\n\nReleased, it names the files that left and the ciphertext that holds them. Withheld,\nit names neither.",
         "properties": {
           "_type": {
             "const": "https://in-toto.io/Statement/v1",
@@ -1185,7 +1196,7 @@
             "type": "string"
           },
           "subject": {
-            "description": "Empty when the result was withheld.",
+            "description": "The files in the partial, each with the SHA-256 of its contents. Empty when the result was withheld.",
             "items": {
               "$ref": "#/components/schemas/StatementSubject"
             },
@@ -1257,7 +1268,7 @@
             "type": "array"
           },
           "encryption_key": {
-            "description": "Fingerprint of the node's encryption key.",
+            "description": "Fingerprint of the node's encryption key, the age recipient on the site list.",
             "title": "Encryption Key",
             "type": "string"
           },
@@ -1825,7 +1836,7 @@
   "paths": {
     "/api/agent/v1/approvals": {
       "post": {
-        "description": "The coordinator knows a decision by the calling node and its decision_id. The agent\nsends a decision again when it cannot tell whether it arrived: one already held\ngets the same answer and is not stored twice. The signature is checked against the\ncalling node's signing key on the site list, and decision.node must be that node.",
+        "description": "The coordinator knows a decision by the calling node and its decision_id. The agent\nsends a decision again when it cannot tell whether it arrived: one already held\ngets the same answer and is not stored twice. A different decision under a\ndecision_id already held is refused, and the one held stays. The signature is\nchecked against the calling node's signing key on the site list, and decision.node\nmust be that node.",
         "operationId": "post_approval_api_agent_v1_approvals_post",
         "requestBody": {
           "content": {
@@ -1840,6 +1851,16 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "This node already sent a different decision under this decision_id."
           },
           "422": {
             "content": {
@@ -1940,6 +1961,7 @@
     },
     "/api/agent/v1/studies/{study_id}/versions/{version}": {
       "get": {
+        "description": "Only for the nodes the version names.",
         "operationId": "get_study_version_api_agent_v1_studies__study_id__versions__version__get",
         "parameters": [
           {
@@ -1972,6 +1994,16 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not pending at the calling node, nor approved by it."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -1991,7 +2023,7 @@
     },
     "/api/agent/v1/tasks/{task_id}/attempts/{attempt}/commit": {
       "post": {
-        "description": "The coordinator makes the partial available to the study's result recipients.\nA repeated commit returns the stored one. A result withheld at barrier 1 is committed\nas withheld, with no partial and no subject, so the job can finish.",
+        "description": "The coordinator makes the partial available to the study's result recipients.\nA released partial is committed after its upload, which must hash to the\nstatement's ciphertext_digest. A repeated commit returns the stored one. A result\nwithheld at barrier 1 is committed as withheld, with no upload, no subject and no\nciphertext digest, so the job can finish.",
         "operationId": "commit_partial_api_agent_v1_tasks__task_id__attempts__attempt__commit_post",
         "parameters": [
           {
@@ -2042,7 +2074,17 @@
                 }
               }
             },
-            "description": "Not a task of the calling node, not its current attempt, or its lease is no longer valid."
+            "description": "Not a task of the calling node, not its current attempt, or the attempt's lease is no longer valid. An attempt has one lease at a time, so the path names it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Released, but nothing was uploaded, or the upload is not the ciphertext_digest and ciphertext_size the statement names."
           },
           "422": {
             "content": {
@@ -2063,7 +2105,7 @@
     },
     "/api/agent/v1/tasks/{task_id}/attempts/{attempt}/decision": {
       "post": {
-        "description": "A refusal is final for that request at that node: the same request delivered again\ngets the same refusal.",
+        "description": "A refusal is final for that request at that node: the same request delivered again\ngets the same refusal. The same verdict sent again changes nothing.",
         "operationId": "post_task_decision_api_agent_v1_tasks__task_id__attempts__attempt__decision_post",
         "parameters": [
           {
@@ -2107,7 +2149,17 @@
                 }
               }
             },
-            "description": "Not a task of the calling node, not its current attempt, or its lease is no longer valid."
+            "description": "Not a task of the calling node, not its current attempt, or the attempt's lease is no longer valid. An attempt has one lease at a time, so the path names it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "This attempt already has a different verdict, or this node already sent a different decision under the refusal's decision_id."
           },
           "422": {
             "content": {
@@ -2172,7 +2224,7 @@
                 }
               }
             },
-            "description": "Not a task of the calling node, not its current attempt, or its lease is no longer valid."
+            "description": "Not a task of the calling node, not its current attempt, or the attempt's lease is no longer valid. An attempt has one lease at a time, so the path names it."
           },
           "422": {
             "content": {
@@ -2193,7 +2245,7 @@
     },
     "/api/agent/v1/tasks/{task_id}/attempts/{attempt}/partial": {
       "put": {
-        "description": "The coordinator checks the lease and the digest. Uploading the same bytes again\nchanges nothing.",
+        "description": "The age ciphertext in its binary form. The coordinator checks the lease and\nContent-Digest. Uploading the same bytes again changes nothing.",
         "operationId": "put_partial_api_agent_v1_tasks__task_id__attempts__attempt__partial_put",
         "parameters": [
           {
@@ -2215,13 +2267,13 @@
             }
           },
           {
-            "description": "sha-256=<base64 of the body's SHA-256>",
+            "description": "sha-256=:<base64 of the body's SHA-256>: (RFC 9530)",
             "in": "header",
-            "name": "Digest",
+            "name": "Content-Digest",
             "required": true,
             "schema": {
-              "description": "sha-256=<base64 of the body's SHA-256>",
-              "title": "Digest",
+              "description": "sha-256=:<base64 of the body's SHA-256>: (RFC 9530)",
+              "title": "Content-Digest",
               "type": "string"
             }
           }
@@ -2249,7 +2301,7 @@
                 }
               }
             },
-            "description": "Not a task of the calling node, not its current attempt, or its lease is no longer valid."
+            "description": "Not a task of the calling node, not its current attempt, or the attempt's lease is no longer valid. An attempt has one lease at a time, so the path names it."
           },
           "409": {
             "content": {
@@ -2280,6 +2332,7 @@
     },
     "/api/agent/v1/workflows/{digest}": {
       "get": {
+        "description": "Only for the nodes of a study version the workflow was added to.",
         "operationId": "get_workflow_api_agent_v1_workflows__digest__get",
         "parameters": [
           {
@@ -2302,6 +2355,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not pending at the calling node, nor approved by it."
           },
           "422": {
             "content": {

@@ -20,6 +20,10 @@ from pydantic import (
 Digest = str
 """A SHA-256 digest: sha256: and 64 lowercase hex digits."""
 
+Fingerprint = str
+"""A public key's fingerprint: sha256: and the SHA-256, in lowercase hex, of the key
+exactly as the site list writes it. For an age key, that is its recipient string."""
+
 
 def _says_its_zone(value: str) -> str:
     try:
@@ -117,7 +121,9 @@ class Member(Signed):
 
 class StudyNode(Signed):
     node: str
-    encryption_key: Digest = Field(description="Fingerprint of the node's encryption key.")
+    encryption_key: Fingerprint = Field(
+        description="Fingerprint of the node's encryption key, the age recipient on the site list."
+    )
     datasets: list[str]
 
 
@@ -277,6 +283,22 @@ class JobSubmission(BaseModel):
     request_id: str
     tasks: list[SignedJobRequest] = Field(min_length=1)
 
+    @model_validator(mode="after")
+    def _one_job_one_request_per_node(self) -> Self:
+        requests = [task.job_request for task in self.tasks]
+        if any(request.request_id != self.request_id for request in requests):
+            raise ValueError("every task carries the job's request_id")
+        nodes = [request.node for request in requests]
+        if len(set(nodes)) != len(nodes):
+            raise ValueError("a job has one task per node")
+        named = {
+            (r.study_id, r.study_version, r.study_digest, r.workflow_digest, r.member)
+            for r in requests
+        }
+        if len(named) != 1:
+            raise ValueError("every task names the same study version, workflow and member")
+        return self
+
 
 class TaskState(BaseModel):
     node: str
@@ -322,23 +344,52 @@ class PartialPredicate(Signed):
     study_digest: Digest
     workflow_digest: Digest
     node: str
-    ciphertext_size: int | None = Field(
-        None, description="The length of ciphertext as the partial carries it, in base64."
+    decision: Literal["released", "withheld"] = Field(
+        description="Whether the result left the node. Inside the predicate, so the node's "
+        "signature covers it and nobody passing the partial on can relabel it."
     )
-    recipient_keys: list[Digest] | None = Field(
+    ciphertext_digest: Digest | None = Field(
+        None,
+        description="The SHA-256 of the age ciphertext in its binary form, as uploaded. Only "
+        "when released.",
+    )
+    ciphertext_size: int | None = Field(
+        None, description="The length in bytes of the age ciphertext in its binary form."
+    )
+    recipient_keys: list[Fingerprint] | None = Field(
         None,
         description="The result keys the partial is encrypted for: the submitter's, or every "
-        "member's (result_recipients). Each is the SHA-256 of the age recipient string.",
+        "member's (result_recipients).",
     )
 
 
 class Statement(Signed):
-    """A node's outer statement on a partial, as an in-toto Statement"""
+    """A node's outer statement on a partial, as an in-toto Statement.
+
+    Released, it names the files that left and the ciphertext that holds them. Withheld,
+    it names neither.
+    """
 
     type: Literal["https://in-toto.io/Statement/v1"] = Field(alias="_type")
-    subject: list[StatementSubject] = Field(description="Empty when the result was withheld.")
+    subject: list[StatementSubject] = Field(
+        description="The files in the partial, each with the SHA-256 of its contents. Empty "
+        "when the result was withheld."
+    )
     predicateType: Literal["https://biochef.app/partial/v1"]
     predicate: PartialPredicate
+
+    @model_validator(mode="after")
+    def _released_names_its_ciphertext(self) -> Self:
+        predicate = self.predicate
+        ciphertext = (predicate.ciphertext_digest, predicate.ciphertext_size)
+        if predicate.decision == "released":
+            if not self.subject or None in ciphertext:
+                raise ValueError(
+                    "a released partial names its files, ciphertext_digest and ciphertext_size"
+                )
+        elif self.subject or ciphertext != (None, None):
+            raise ValueError("a withheld partial names no files and no ciphertext")
+        return self
 
 
 class Partial(BaseModel):
@@ -346,14 +397,22 @@ class Partial(BaseModel):
 
     node: str
     attempt: int
-    decision: Literal["released", "withheld"]
     statement: Statement
     signature: Ed25519Signature = Field(
         description="The node's signature over the RFC 8785 form of statement."
     )
     ciphertext: str | None = Field(
-        None, description="The age ciphertext, in its binary form, in base64. None when withheld."
+        None,
+        description="The age ciphertext, in its binary form, in base64. Its SHA-256 is "
+        "ciphertext_digest. None when withheld.",
     )
+
+    @model_validator(mode="after")
+    def _ciphertext_only_when_released(self) -> Self:
+        released = self.statement.predicate.decision == "released"
+        if released != (self.ciphertext is not None):
+            raise ValueError("a released partial carries its ciphertext, a withheld one has none")
+        return self
 
 
 class SiteStatus(BaseModel):
@@ -369,9 +428,18 @@ class SiteListNode(BaseModel):
     """One node on the site list, with its keys"""
 
     node: str
-    encryption_key: str = Field(description="The age public key job payloads are encrypted for.")
-    signing_key: str = Field(description="The public key that checks the node's signatures.")
-    certificate: Digest = Field(description="Fingerprint of the node's client certificate.")
+    encryption_key: str = Field(
+        description="The age X25519 recipient, in lowercase, that job payloads are encrypted "
+        "for. Studies name it by its fingerprint."
+    )
+    signing_key: str = Field(
+        description="The Ed25519 public key that checks the node's decisions and partials, as "
+        "base64 of its DER SubjectPublicKeyInfo: the body of its PEM file."
+    )
+    certificate: Digest = Field(
+        description="sha256: and the SHA-256, in lowercase hex, of the node's client certificate "
+        "in DER."
+    )
 
 
 class LsLoginKey(BaseModel):
@@ -437,6 +505,9 @@ class PollRequest(BaseModel):
 
 
 class Lease(BaseModel):
+    """An attempt's hold on its task. An attempt has one lease at a time, so the routes
+    under /tasks/{task_id}/attempts/{attempt} name it by task and attempt."""
+
     lease_id: str
     expires_at: datetime
     valid: bool = Field(description="False when the coordinator re-queued or canceled the attempt.")
@@ -476,6 +547,10 @@ class ControlMessage(BaseModel):
 
 class PollResponse(BaseModel):
     server_time: datetime
+    site_list_version: int = Field(
+        description="The version of the site list the coordinator serves. When it is newer "
+        "than the agent's, the agent fetches GET /site-list."
+    )
     next_poll_after_s: int = Field(
         description="Seconds to wait before the next poll; 30 unless the coordinator is "
         "slowing agents down. A lease lasts three of these intervals, so an agent that polls "
@@ -632,7 +707,6 @@ class TaskEvent(BaseModel):
 class PartialCommit(Signed):
     """The node's outer statement on a partial, signed with the node key"""
 
-    decision: Literal["released", "withheld"]
     statement: Statement
     signature: Ed25519Signature = Field(
         description="The node's signature over the RFC 8785 form of statement."

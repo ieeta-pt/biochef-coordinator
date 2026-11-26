@@ -3,6 +3,7 @@
 Every operation answers with fixed example data. Nothing is checked or stored yet.
 """
 
+import json
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
@@ -90,14 +91,25 @@ SITE_LIST = b"""{
 }
 """
 SITE_LIST_SIGNATURE = "7vE1qDk3..."
+# Read from the bytes, so a poll never names a version the list does not have.
+SITE_LIST_VERSION: int = json.loads(SITE_LIST)["version"]
 
 # For every call under /tasks/{task_id}/attempts/{attempt}. The same answer for
 # all three cases, so a node cannot learn whether another node's task exists.
 TASK_NOT_FOUND = {
     404: {
         "model": Problem,
-        "description": "Not a task of the calling node, not its current attempt, or its lease "
-        "is no longer valid.",
+        "description": "Not a task of the calling node, not its current attempt, or the "
+        "attempt's lease is no longer valid. An attempt has one lease at a time, so the path "
+        "names it.",
+    }
+}
+
+# For what a node fetches to approve. The same answer whether it exists or not, as above.
+NOT_FOR_THIS_NODE = {
+    404: {
+        "model": Problem,
+        "description": "Not pending at the calling node, nor approved by it.",
     }
 }
 
@@ -213,6 +225,7 @@ async def poll(body: PollRequest, node: CurrentNode) -> PollResponse:
     capacity = body.capacity
     return PollResponse(
         server_time=now,
+        site_list_version=SITE_LIST_VERSION,
         next_poll_after_s=POLL_INTERVAL_S,
         leases=[
             Lease(lease_id=t.lease_id, expires_at=now + timedelta(seconds=LEASE_S), valid=True)
@@ -230,42 +243,61 @@ async def poll(body: PollRequest, node: CurrentNode) -> PollResponse:
 @router.get(
     "/studies/{study_id}/versions/{version}",
     summary="A study version waiting for this node's approval",
+    responses=NOT_FOR_THIS_NODE,
     response_model_exclude_unset=True,
 )
-async def get_study_version(study_id: str, version: int) -> StudyVersion:
+async def get_study_version(study_id: str, version: int, node: CurrentNode) -> StudyVersion:
+    """Only for the nodes the version names."""
     return study_version(study_id, version)
 
 
 @router.get(
     "/workflows/{digest}",
     summary="A workflow waiting for this node's approval",
+    responses=NOT_FOR_THIS_NODE,
     response_model_exclude_unset=True,
 )
-async def get_workflow(digest: str) -> Workflow:
+async def get_workflow(digest: str, node: CurrentNode) -> Workflow:
+    """Only for the nodes of a study version the workflow was added to."""
     return WORKFLOW
 
 
 @router.post(
     "/approvals",
     status_code=204,
+    responses={
+        409: {
+            "model": Problem,
+            "description": "This node already sent a different decision under this decision_id.",
+        }
+    },
     summary="A data manager's signed approval, refusal or withdrawal",
 )
 async def post_approval(approval: Approval) -> None:
     """The coordinator knows a decision by the calling node and its decision_id. The agent
     sends a decision again when it cannot tell whether it arrived: one already held
-    gets the same answer and is not stored twice. The signature is checked against the
-    calling node's signing key on the site list, and decision.node must be that node."""
+    gets the same answer and is not stored twice. A different decision under a
+    decision_id already held is refused, and the one held stays. The signature is
+    checked against the calling node's signing key on the site list, and decision.node
+    must be that node."""
 
 
 @router.post(
     "/tasks/{task_id}/attempts/{attempt}/decision",
     status_code=204,
-    responses=TASK_NOT_FOUND,
+    responses=TASK_NOT_FOUND
+    | {
+        409: {
+            "model": Problem,
+            "description": "This attempt already has a different verdict, or this node "
+            "already sent a different decision under the refusal's decision_id.",
+        }
+    },
     summary="Accept or refuse a delivered task after the local checks",
 )
 async def post_task_decision(task_id: str, attempt: int, decision: TaskDecision) -> None:
     """A refusal is final for that request at that node: the same request delivered again
-    gets the same refusal."""
+    gets the same refusal. The same verdict sent again changes nothing."""
 
 
 @router.post(
@@ -296,22 +328,35 @@ async def post_task_event(task_id: str, attempt: int, event: TaskEvent) -> None:
 async def put_partial(
     task_id: str,
     attempt: int,
-    digest: Annotated[
-        str, Header(alias="Digest", description="sha-256=<base64 of the body's SHA-256>")
+    content_digest: Annotated[
+        str,
+        Header(
+            alias="Content-Digest",
+            description="sha-256=:<base64 of the body's SHA-256>: (RFC 9530)",
+        ),
     ],
 ) -> None:
-    """The coordinator checks the lease and the digest. Uploading the same bytes again
-    changes nothing."""
+    """The age ciphertext in its binary form. The coordinator checks the lease and
+    Content-Digest. Uploading the same bytes again changes nothing."""
 
 
 @router.post(
     "/tasks/{task_id}/attempts/{attempt}/commit",
-    responses=TASK_NOT_FOUND,
+    responses=TASK_NOT_FOUND
+    | {
+        409: {
+            "model": Problem,
+            "description": "Released, but nothing was uploaded, or the upload is not the "
+            "ciphertext_digest and ciphertext_size the statement names.",
+        }
+    },
     summary="Commit the partial with the node's signed statement",
     response_model_exclude_unset=True,
 )
 async def commit_partial(task_id: str, attempt: int, commit: PartialCommit) -> PartialCommit:
     """The coordinator makes the partial available to the study's result recipients.
-    A repeated commit returns the stored one. A result withheld at barrier 1 is committed
-    as withheld, with no partial and no subject, so the job can finish."""
+    A released partial is committed after its upload, which must hash to the
+    statement's ciphertext_digest. A repeated commit returns the stored one. A result
+    withheld at barrier 1 is committed as withheld, with no upload, no subject and no
+    ciphertext digest, so the job can finish."""
     return commit

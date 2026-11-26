@@ -34,7 +34,8 @@ router = APIRouter(prefix="/api/v1", tags=["researcher"], responses=INVALID_REQU
 
 
 def current_member() -> str:
-    """The member making the call. Fixed for now; it will come from the Keycloak token."""
+    """The member making the call. Fixed for now; it will come from the LS Login token,
+    and from Keycloak's once Keycloak brokers the login."""
     return "m-02"
 
 
@@ -104,7 +105,7 @@ def job_state(job_id: str, state: str, tasks: list[tuple[str, str, int]]) -> Job
 def partial(node: str, task_id: str) -> Partial:
     statement = {
         "_type": "https://in-toto.io/Statement/v1",
-        "subject": [{"name": "partial", "digest": {"sha256": "aa01..."}}],
+        "subject": [{"name": "allele_counts.tsv", "digest": {"sha256": "aa01..."}}],
         "predicateType": "https://biochef.app/partial/v1",
         "predicate": {
             "request_id": "rq_5b8e...",
@@ -115,14 +116,15 @@ def partial(node: str, task_id: str) -> Partial:
             "study_digest": STUDY_DIGEST,
             "workflow_digest": WORKFLOW_DIGEST,
             "node": node,
-            "ciphertext_size": 18231,
+            "decision": "released",
+            "ciphertext_digest": "sha256:5d1a...",
+            "ciphertext_size": 13672,
             "recipient_keys": ["sha256:c41e..."],
         },
     }
     return Partial(
         node=node,
         attempt=1,
-        decision="released",
         statement=Statement.model_validate(statement),
         signature="BacLPlMNQfOgNvm90spWuuTV_-1xPaLPdwHYnKJ2zIs8145tevYvLhwj2bLc7kuOE5mxsisenuto7WJ2ZEGgxw",
         ciphertext="YWdlLWVuY3J5cHRpb24...",

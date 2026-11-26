@@ -28,6 +28,7 @@ uv run uvicorn coordinator.main:app --reload      # http://localhost:8000
 
 | Task | Command |
 |---|---|
+| Run the tests | `uv run pytest` |
 | Lint and format | `uv run ruff check --fix && uv run ruff format` |
 | Regenerate `openapi.json` after changing the API | `uv run python -m coordinator.openapi` |
 
